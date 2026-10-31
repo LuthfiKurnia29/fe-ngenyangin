@@ -1,0 +1,59 @@
+[
+  {
+    "id": "u1",
+    "name": "Siti Rahayu",
+    "role": "consumer",
+    "email": "konsumen@demo.id",
+    "password": "demo123",
+    "phone": "0812-3456-7890",
+    "address": "Jl. Tebet Barat No. 10, Jakarta Selatan",
+    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=siti"
+  },
+  {
+    "id": "u2",
+    "name": "Ahmad Fauzan",
+    "role": "supplier",
+    "email": "supplier@demo.id",
+    "password": "demo123",
+    "phone": "0821-5678-9012",
+    "outlet": "Bebek Madura Bu Siti",
+    "address": "Jl. Tebet Raya No. 42, Jakarta Selatan",
+    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=ahmad",
+    "description": "Warung bebek madura terpercaya, sudah berdiri sejak 2010."
+  },
+  {
+    "id": "u3",
+    "name": "Joko Susilo",
+    "role": "courier",
+    "email": "kurir@demo.id",
+    "password": "demo123",
+    "phone": "0856-7890-1234",
+    "vehicle": "Honda Beat B 4821 TKC",
+    "radius": 4.5,
+    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=joko",
+    "bagStatus": "Prima & Rapat",
+    "rating": 4.95,
+    "partneredWith": ["Bebek Madura Bu Siti", "Artisan Bakehouse Senopati"]
+  },
+  {
+    "id": "u4",
+    "name": "Admin NGENYANGIN",
+    "role": "admin",
+    "email": "admin@demo.id",
+    "password": "demo123",
+    "phone": "021-5555-0000",
+    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=admin"
+  },
+  {
+    "id": "u5",
+    "name": "Budi Santoso",
+    "role": "supplier",
+    "email": "artisan@demo.id",
+    "password": "demo123",
+    "phone": "0877-1234-5678",
+    "outlet": "Artisan Bakehouse Senopati",
+    "address": "Jl. Senopati Raya No. 15, Jakarta Selatan",
+    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=budi",
+    "description": "Bakehouse artisan spesialis roti sourdough dan pastry premium."
+  }
+]

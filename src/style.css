@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #F7F5F0;
+    color: #16241C;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: 'Poppins', sans-serif;
+    color: #16241C;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Smooth transitions for interactive elements */
+  button, a, input, textarea, select {
+    transition: all 0.15s ease;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #F7F5F0;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #DDE5DE;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #5B6B62;
+  }
+}
+
+@layer components {
+  /* Food card hover effect */
+  .food-card {
+    @apply bg-surface rounded-md border border-border shadow-card transition-all duration-200;
+  }
+
+  .food-card:hover {
+    @apply shadow-card-hover -translate-y-0.5;
+  }
+
+  /* Pill chip */
+  .chip {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-label font-medium;
+  }
+
+  /* Section container */
+  .section-container {
+    @apply max-w-content mx-auto px-6;
+  }
+
+  /* Gradient hero overlay */
+  .hero-gradient {
+    background: linear-gradient(135deg, #E3F0E5 0%, #EAF3EA 50%, #F7F5F0 100%);
+  }
+
+  /* Status badges */
+  .status-menunggu {
+    @apply bg-yellow-50 text-warning border border-yellow-200;
+  }
+
+  .status-diproses {
+    @apply bg-blue-50 text-info border border-blue-200;
+  }
+
+  .status-pengantaran {
+    @apply bg-accent-soft text-accent border border-orange-200;
+  }
+
+  .status-selesai {
+    @apply bg-primary-soft text-success border border-green-200;
+  }
+
+  .status-dibatalkan {
+    @apply bg-red-50 text-error border border-red-200;
+  }
+
+  /* Dashboard sidebar link */
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all duration-150 text-text-secondary hover:bg-primary-soft hover:text-primary;
+  }
+
+  .sidebar-link.active {
+    @apply bg-primary-soft text-primary font-semibold;
+  }
+
+  /* Form input base */
+  .form-input-base {
+    @apply w-full h-12 px-4 rounded-sm border border-border bg-surface text-text-primary text-body placeholder:text-text-secondary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all duration-150;
+  }
+
+  /* Discount badge */
+  .discount-badge {
+    @apply absolute top-3 left-3 bg-accent text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm;
+  }
+
+  /* Safety badge */
+  .safety-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-soft text-primary rounded-full text-xs font-medium border border-primary/20;
+  }
+
+  /* Timeline step */
+  .timeline-step {
+    @apply relative flex gap-4;
+  }
+
+  .timeline-step:not(:last-child)::after {
+    content: '';
+    @apply absolute left-4 top-8 w-0.5 bg-border;
+    bottom: -8px;
+  }
+
+  .timeline-step.completed::after {
+    @apply bg-success;
+  }
+
+  .timeline-step.active::after {
+    @apply bg-info;
+  }
+}
+
+@layer utilities {
+  /* Text truncate 2 lines */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Glass morphism */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Strikethrough price */
+  .price-original {
+    @apply text-text-secondary line-through text-sm;
+  }
+
+  /* Primary price */
+  .price-discount {
+    @apply text-primary-dark font-semibold;
+    font-family: 'Poppins', sans-serif;
+  }
+}
