@@ -1,33 +1,54 @@
-import usersData from '@/data/users.json'
+import api from './api'
 
-const delay = (ms = 100) => new Promise(resolve => setTimeout(resolve, ms))
+const unwrap = (res) => res.data?.data ?? res.data
+
+const toError = (e, fallback) =>
+  new Error(e.response?.data?.message || fallback)
+
+// BE hanya menyimpan name/email/role, jadi avatar dibuat di FE
+const withAvatar = (user) => ({
+  ...user,
+  avatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name || user.email)}`,
+})
 
 export const userService = {
   async login(email, password) {
-    await delay(300)
-    const user = usersData.find(u => u.email === email && u.password === password)
-    if (!user) throw new Error('Email atau password salah')
-    const { password: _, ...safeUser } = user
-    return safeUser
-  },
-
-  async getById(id) {
-    await delay()
-    const user = usersData.find(u => u.id === id)
-    if (!user) throw new Error('Pengguna tidak ditemukan')
-    const { password: _, ...safeUser } = user
-    return safeUser
-  },
-
-  async register(data) {
-    await delay(400)
-    // Simulate registration
-    const newUser = {
-      id: 'u' + Date.now(),
-      ...data,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`
+    try {
+      const res = await api.post('/auth/login', { email, password })
+      const data = unwrap(res)
+      // sesuaikan nama field dengan response BE
+      localStorage.setItem('ngenyangin_token', data.access_token)
+      return withAvatar(data.user)
+    } catch (e) {
+      throw toError(e, 'Email atau password salah')
     }
-    const { password: _, ...safeUser } = newUser
-    return safeUser
-  }
+  },
+
+  async register(payload) {
+    try {
+      // payload: { name, email, password, role }
+      await api.post('/auth/register', payload)
+      // login otomatis setelah daftar
+      return await this.login(payload.email, payload.password)
+    } catch (e) {
+      throw toError(e, 'Pendaftaran gagal')
+    }
+  },
+
+  // BE belum punya GET /users/:id. Sementara hanya bisa mengambil user yang sedang login.
+  async getById(id) {
+    try {
+      const res = await api.get('/auth/me')
+      const data = unwrap(res)
+      const me = withAvatar(data.user ?? data)
+      if (id && me.id !== id) throw new Error('Pengguna tidak ditemukan')
+      return me
+    } catch (e) {
+      throw e.message ? e : toError(e, 'Pengguna tidak ditemukan')
+    }
+  },
+
+  async logout() {
+    try { await api.post('/auth/logout') } catch { /* abaikan */ }
+  },
 }

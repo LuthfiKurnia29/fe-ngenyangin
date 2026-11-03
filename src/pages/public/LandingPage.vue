@@ -8,11 +8,15 @@ import BaseButton from '@/components/base/BaseButton.vue'
 const router = useRouter()
 const featuredFoods = ref([])
 const isLoading = ref(true)
+const errorMessage = ref('')
 
 onMounted(async () => {
   try {
     const all = await foodService.getAll()
     featuredFoods.value = all.slice(0, 4)
+  } catch (err) {
+    console.error('Gagal memuat makanan:', err)
+    errorMessage.value = 'Gagal memuat makanan. Pastikan server berjalan.'
   } finally {
     isLoading.value = false
   }
@@ -92,22 +96,11 @@ const categories = [
           <!-- Hero image -->
           <div class="hidden lg:block relative">
             <div class="rounded-lg overflow-hidden shadow-card-hover rotate-2 hover:rotate-0 transition-transform duration-500">
-              <img src="https://picsum.photos/seed/hero-food/600/400" alt="Makanan surplus segar" class="w-full" />
-            </div>
-            <div class="absolute -bottom-6 -left-6 bg-white rounded-md shadow-card p-4 rotate-[-3deg]">
-              <p class="text-sm font-semibold text-primary-dark">Hemat s/d 70%</p>
-              <p class="text-xs text-text-secondary">Dari UMKM terpercaya</p>
-            </div>
-            <div class="absolute -top-4 -right-4 bg-accent text-white rounded-full w-20 h-20 flex items-center justify-center rotate-12 shadow-lg">
-              <div class="text-center">
-                <p class="text-xs font-bold">SURPLUS</p>
-                <p class="text-lg font-bold">-70%</p>
-              </div>
+              <img src="@/assets/landingpage.jpg" alt="Warteg" class="w-full" />
             </div>
           </div>
         </div>
       </div>
-
       <!-- Decorative shapes -->
       <div class="absolute top-20 right-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
       <div class="absolute bottom-10 left-10 w-48 h-48 bg-accent/5 rounded-full blur-3xl"></div>
@@ -160,6 +153,16 @@ const categories = [
             </div>
           </div>
         </div>
+
+        <!-- Error state -->
+        <p v-else-if="errorMessage" class="text-center text-sm text-danger py-8">
+          {{ errorMessage }}
+        </p>
+
+        <!-- Empty state -->
+        <p v-else-if="featuredFoods.length === 0" class="text-center text-sm text-text-secondary py-8">
+          Belum ada surplus makanan hari ini.
+        </p>
 
         <!-- Food grid -->
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

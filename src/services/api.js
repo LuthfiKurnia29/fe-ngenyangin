@@ -1,0 +1,28 @@
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+  headers: { 'Content-Type': 'application/json' },
+})
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('ngenyangin_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    const isAuthRoute = err.config?.url?.startsWith('/auth/')
+    // Jangan redirect kalau 401 berasal dari login (password salah)
+    if (err.response?.status === 401 && !isAuthRoute) {
+      localStorage.removeItem('ngenyangin_token')
+      localStorage.removeItem('ngenyangin_user')
+      window.location.href = '/login'
+    }
+    return Promise.reject(err)
+  }
+)
+
+export default api

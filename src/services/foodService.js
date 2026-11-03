@@ -1,63 +1,63 @@
-import foodsData from '@/data/foods.json'
+import api from './api'
 
-const delay = (ms = 150) => new Promise(resolve => setTimeout(resolve, ms))
+const BASE = '/products'
+
+const unwrap = (res) => res.data?.data ?? res.data
+
+// Samakan nama field BE dengan yang dipakai komponen FE
+const mapFood = (f) => ({
+  ...f,
+  price: f.price ?? f.harga,
+  image: f.image ?? f.image_url ?? '',
+  isActive: f.is_empty === undefined ? true : !f.is_empty,
+})
 
 export const foodService = {
-  async getAll() {
-    await delay()
-    return [...foodsData]
+  async getAll(params = {}) {
+    const res = await api.get(BASE, { params })
+    const data = unwrap(res)
+    return (data.items ?? data).map(mapFood)
   },
 
   async getById(id) {
-    await delay()
-    const food = foodsData.find(f => f.id === id)
-    if (!food) throw new Error('Makanan tidak ditemukan')
-    return { ...food }
+    try {
+      const res = await api.get(`${BASE}/${id}`)
+      return mapFood(unwrap(res))
+    } catch (e) {
+      if (e.response?.status === 404) throw new Error('Makanan tidak ditemukan')
+      throw e
+    }
   },
 
   async getByCategory(category) {
-    await delay()
-    if (!category || category === 'Semua') return [...foodsData]
-    return foodsData.filter(f => f.category === category)
-  },
-
-  async getBySupplierId(supplierId) {
-    await delay()
-    return foodsData.filter(f => f.supplierId === supplierId)
+    if (!category || category === 'Semua') return this.getAll()
+    return this.getAll({ category })
   },
 
   async search(query) {
-    await delay()
-    const q = query.toLowerCase()
-    return foodsData.filter(f =>
-      f.name.toLowerCase().includes(q) ||
-      f.supplierName.toLowerCase().includes(q) ||
-      f.category.toLowerCase().includes(q) ||
-      f.outlet.toLowerCase().includes(q)
-    )
+    return this.getAll({ search: query })
+  },
+
+  async getBySupplierId(supplierId) {
+    const foods = await this.getAll()
+    return foods.filter(f => f.supplierId === supplierId)
   },
 
   async getCategories() {
-    await delay(50)
     return ['Semua', 'Makanan Berat', 'Jajanan', 'Roti & Kue', 'Minuman', 'Sayur & Buah']
   },
 
-  // Simulate creating a food listing (supplier)
   async create(data) {
-    await delay(300)
-    const newFood = {
-      id: 'f' + Date.now(),
-      ...data,
-      safetyApproved: true,
-      isActive: true,
-      createdAt: new Date().toISOString()
-    }
-    // In real app, would POST to API
-    return newFood
+    const res = await api.post(BASE, data)
+    return mapFood(unwrap(res))
   },
 
   async update(id, data) {
-    await delay(300)
-    return { id, ...data }
-  }
+    const res = await api.put(`${BASE}/${id}`, data)
+    return mapFood(unwrap(res))
+  },
+
+  async remove(id) {
+    await api.delete(`${BASE}/${id}`)
+  },
 }

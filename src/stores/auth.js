@@ -43,10 +43,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function logout() {
-    user.value = null
-    localStorage.removeItem('ngenyangin_user')
-  }
+  async function logout() {
+  await userService.logout()
+  user.value = null
+  localStorage.removeItem('ngenyangin_user')
+  localStorage.removeItem('ngenyangin_token')
+}
 
   return { user, isLoading, error, isLoggedIn, role, userName, login, register, logout }
 })
