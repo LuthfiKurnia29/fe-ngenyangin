@@ -4,7 +4,6 @@ import { ref } from 'vue'
 const helpTopics = ref([
   { title: 'Cara Memesan', content: 'Pilih makanan, tambahkan ke keranjang, pilih metode pengambilan atau pengantaran, lalu checkout.' },
   { title: 'Cara Menjadi Supplier', content: 'Daftar, verifikasi, lalu unggah produk surplus melalui dashboard supplier.' },
-  { title: 'Cara Menjadi Kurir', content: 'Daftar, lengkapi data kendaraan, dan mulai menerima tugas pengiriman.' },
 ])
 </script>
 

@@ -56,6 +56,17 @@ export const userService = {
     }
   },
 
+  // payload: { name, phone, address }
+  async updateProfile(payload) {
+    try {
+      const res = await api.put('/auth/profile', payload)
+      const data = unwrap(res)
+      return withAvatar(data.user ?? data)
+    } catch (e) {
+      throw toError(e, 'Gagal menyimpan profil')
+    }
+  },
+
   async logout() {
     try { await api.post('/auth/logout') } catch { /* abaikan */ }
   },

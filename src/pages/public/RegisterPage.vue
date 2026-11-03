@@ -19,7 +19,6 @@ const formError = ref('')
 const roles = [
   { value: 'consumer', label: 'Konsumen', desc: 'Beli makanan surplus dengan harga diskon', emoji: '🛒' },
   { value: 'supplier', label: 'Supplier', desc: 'Jual surplus makanan dari usaha kuliner Anda', emoji: '🏪' },
-  { value: 'courier', label: 'Kurir', desc: 'Antarkan makanan sebagai kurir rekanan', emoji: '🛵' },
 ]
 
 async function handleRegister() {
@@ -56,7 +55,7 @@ async function handleRegister() {
         <!-- Role selection -->
         <div class="mb-6">
           <label class="block text-sm font-medium text-text-primary mb-2">Pilih Peran <span class="text-error">*</span></label>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               v-for="role in roles"
               :key="role.value"

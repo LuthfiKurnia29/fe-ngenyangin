@@ -21,11 +21,6 @@ const navItems = computed(() => {
       { label: 'Pesanan Masuk', to: '/supplier/pesanan', icon: 'clipboard-list' },
     ]
   }
-  if (props.role === 'courier') {
-    return [
-      { label: 'Dashboard & Tugas', to: '/kurir', icon: 'truck', exact: true },
-    ]
-  }
   if (props.role === 'admin') {
     return [
       { label: 'Dashboard', to: '/admin', icon: 'bar-chart', exact: true },
@@ -45,7 +40,6 @@ function logout() {
 
 const roleLabel = computed(() => ({
   supplier: 'Portal Supplier',
-  courier: 'Portal Kurir Rekanan',
   admin: 'Admin Panel'
 })[props.role] || '')
 </script>

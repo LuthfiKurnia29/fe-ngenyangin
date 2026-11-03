@@ -32,7 +32,6 @@ async function handleLogin() {
 const demoAccounts = [
   { label: 'Konsumen', email: 'konsumen@demo.id' },
   { label: 'Supplier', email: 'supplier@demo.id' },
-  { label: 'Kurir', email: 'kurir@demo.id' },
   { label: 'Admin', email: 'admin@demo.id' },
 ]
 

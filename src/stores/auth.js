@@ -47,6 +47,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function updateProfile(data) {
+    isLoading.value = true
+    error.value = null
+    try {
+      const updated = await userService.updateProfile(data)
+      user.value = { ...user.value, ...updated }
+      localStorage.setItem('ngenyangin_user', JSON.stringify(user.value))
+      return user.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   async function logout() {
   await userService.logout()
   user.value = null
@@ -54,5 +70,5 @@ export const useAuthStore = defineStore('auth', () => {
   localStorage.removeItem('ngenyangin_token')
 }
 
-  return { user, isLoading, error, isLoggedIn, role, userName, login, register, logout }
+  return { user, isLoading, error, isLoggedIn, role, userName, login, register, updateProfile, logout }
 })
