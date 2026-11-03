@@ -7,8 +7,15 @@ const unwrap = (res) => res.data?.data ?? res.data
 // Samakan nama field BE dengan yang dipakai komponen FE
 const mapFood = (f) => ({
   ...f,
-  price: f.price ?? f.harga,
+  price: f.price ?? f.harga ?? 0,
   image: f.image ?? f.image_url ?? '',
+  // field yang dipakai FoodCard tapi belum ada di tabel BE
+  supplierName: f.supplierName ?? 'Supplier',
+  outlet: f.outlet ?? '-',
+  pickupDeadline: f.pickupDeadline ?? '-',
+  originalPrice: f.originalPrice ?? f.price ?? f.harga ?? 0,
+  discountPrice: f.discountPrice ?? f.price ?? f.harga ?? 0,
+  discount: f.discount ?? 0,
   isActive: f.is_empty === undefined ? true : !f.is_empty,
 })
 

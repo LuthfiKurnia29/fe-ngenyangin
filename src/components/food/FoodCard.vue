@@ -15,7 +15,7 @@ const auth = useAuthStore()
 const notify = useNotificationStore()
 
 function formatPrice(price) {
-  return 'Rp ' + price.toLocaleString('id-ID')
+  return 'Rp ' + Number(price || 0).toLocaleString('id-ID')
 }
 
 function goToDetail() {
@@ -50,7 +50,7 @@ function addToCart(e) {
         loading="lazy"
       />
       <!-- Discount Badge -->
-      <span class="discount-badge">-{{ food.discount }}%</span>
+      <span v-if="food.discount > 0" class="discount-badge">-{{ food.discount }}%</span>
 
       <!-- Urgency overlay if very few left -->
       <div
@@ -89,7 +89,7 @@ function addToCart(e) {
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
           </svg>
-          {{ food.outlet.split(',')[0] }}
+          {{ (food.outlet || '').split(',')[0] }}
         </span>
         <span class="text-border">•</span>
         <span class="text-accent font-medium">Ambil &lt; {{ food.pickupDeadline }}</span>

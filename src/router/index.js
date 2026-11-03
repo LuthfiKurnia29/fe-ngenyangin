@@ -100,6 +100,10 @@ const routes = [
     ]
   },
 
+  // Alias alamat umum
+  { path: '/login', redirect: '/masuk' },
+  { path: '/register', redirect: '/daftar' },
+
   // Catch-all
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]

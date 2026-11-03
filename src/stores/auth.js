@@ -8,7 +8,11 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref(null)
 
   const isLoggedIn = computed(() => !!user.value)
-  const role = computed(() => user.value?.role || null)
+  // BE memakai 'customer', FE memakai 'consumer'
+  const role = computed(() => {
+    const r = user.value?.role
+    return r === 'customer' ? 'consumer' : r || null
+  })
   const userName = computed(() => user.value?.name || '')
 
   async function login(email, password) {

@@ -2,12 +2,16 @@ import api from './api'
 
 const unwrap = (res) => res.data?.data ?? res.data
 
-const toError = (e, fallback) =>
-  new Error(e.response?.data?.message || fallback)
+const toError = (e, fallback) => {
+  if (e.response?.data?.message) return new Error(e.response.data.message)
+  if (e.request && !e.response) return new Error('Tidak bisa terhubung ke server. Pastikan backend berjalan di port 5000.')
+  return new Error(e.message || fallback)
+}
 
 // BE hanya menyimpan name/email/role, jadi avatar dibuat di FE
 const withAvatar = (user) => ({
   ...user,
+  role: user.role === 'customer' ? 'consumer' : user.role,
   avatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name || user.email)}`,
 })
 
@@ -25,13 +29,17 @@ export const userService = {
   },
 
   async register(payload) {
+    // payload: { name, email, password, role }
     try {
-      // payload: { name, email, password, role }
       await api.post('/auth/register', payload)
-      // login otomatis setelah daftar
-      return await this.login(payload.email, payload.password)
     } catch (e) {
       throw toError(e, 'Pendaftaran gagal')
+    }
+    // login otomatis setelah daftar; error-nya dibiarkan apa adanya
+    try {
+      return await this.login(payload.email, payload.password)
+    } catch (e) {
+      throw new Error(`Akun terdaftar, tapi masuk otomatis gagal: ${e.message}`)
     }
   },
 

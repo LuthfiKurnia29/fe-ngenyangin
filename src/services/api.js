@@ -19,7 +19,7 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('ngenyangin_token')
       localStorage.removeItem('ngenyangin_user')
-      window.location.href = '/login'
+      window.location.href = '/masuk'
     }
     return Promise.reject(err)
   }
