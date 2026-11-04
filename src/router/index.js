@@ -69,6 +69,7 @@ const routes = [
       { path: '', name: 'SupplierDashboard', component: SupplierDashboard, meta: { role: 'supplier' } },
       { path: 'tambah', name: 'AddFood', component: AddFoodPage, meta: { role: 'supplier' } },
       { path: 'edit/:id', name: 'EditFood', component: AddFoodPage, meta: { role: 'supplier' } },
+      { path: 'profil', name: 'SupplierProfile', component: () => import('@/pages/consumer/ProfilePage.vue'), meta: { role: 'supplier' } },
       { path: 'pesanan', name: 'IncomingOrders', component: IncomingOrdersPage, meta: { role: 'supplier' } },
     ]
   },

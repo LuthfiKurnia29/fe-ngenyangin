@@ -1,4 +1,5 @@
 <script setup>
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -19,6 +20,7 @@ const navItems = computed(() => {
       { label: 'Dashboard', to: '/supplier', icon: 'grid', exact: true },
       { label: 'Tambah Makanan', to: '/supplier/tambah', icon: 'plus-circle' },
       { label: 'Pesanan Masuk', to: '/supplier/pesanan', icon: 'clipboard-list' },
+      { label: 'Profil Toko', to: '/supplier/profil', icon: 'user' },
     ]
   }
   if (props.role === 'admin') {
@@ -58,11 +60,7 @@ const roleLabel = computed(() => ({
     <!-- User info -->
     <div class="px-4 py-4 border-b border-border">
       <div class="flex items-center gap-3 p-3 bg-primary-soft rounded-md">
-        <img
-          :src="`https://api.dicebear.com/7.x/avataaars/svg?seed=${auth.userName}`"
-          :alt="auth.userName"
-          class="w-9 h-9 rounded-full bg-white flex-shrink-0"
-        />
+        <UserAvatar :avatar="auth.user?.avatar" :role="auth.role" :gender="auth.user?.gender" :name="auth.userName" size="w-9 h-9" />
         <div v-if="!collapsed" class="min-w-0">
           <p class="text-sm font-semibold text-text-primary truncate">{{ auth.userName }}</p>
           <p class="text-xs text-text-secondary capitalize truncate">{{ role }}</p>
@@ -84,6 +82,7 @@ const roleLabel = computed(() => ({
           <path v-if="item.icon === 'grid'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
           <path v-if="item.icon === 'plus-circle'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
           <path v-if="item.icon === 'clipboard-list'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+          <path v-if="item.icon === 'user'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
           <path v-if="item.icon === 'truck'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/>
           <path v-if="item.icon === 'truck'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/>
           <path v-if="item.icon === 'bar-chart'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>

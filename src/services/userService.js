@@ -8,11 +8,14 @@ const toError = (e, fallback) => {
   return new Error(e.message || fallback)
 }
 
-// BE hanya menyimpan name/email/role, jadi avatar dibuat di FE
+// Samakan bentuk user dari BE. Foto kosong -> ikon default dirender oleh <UserAvatar>.
 const withAvatar = (user) => ({
   ...user,
   role: user.role === 'customer' ? 'consumer' : user.role,
-  avatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name || user.email)}`,
+  avatar: user.avatar || '',
+  gender: user.gender || '',
+  outlet: user.outlet || '',
+  description: user.description || '',
 })
 
 export const userService = {
@@ -20,8 +23,10 @@ export const userService = {
     try {
       const res = await api.post('/auth/login', { email, password })
       const data = unwrap(res)
-      // sesuaikan nama field dengan response BE
-      localStorage.setItem('ngenyangin_token', data.access_token)
+      // BE mengirim token di data.session.access_token
+      const token = data.session?.access_token ?? data.access_token
+      if (!token) throw new Error('Login berhasil tetapi token tidak diterima dari server')
+      localStorage.setItem('ngenyangin_token', token)
       return withAvatar(data.user)
     } catch (e) {
       throw toError(e, 'Email atau password salah')
@@ -56,7 +61,7 @@ export const userService = {
     }
   },
 
-  // payload: { name, phone, address }
+  // payload: { name, phone, address, gender?, outlet?, description?, avatar? }
   async updateProfile(payload) {
     try {
       const res = await api.put('/auth/profile', payload)
@@ -64,6 +69,18 @@ export const userService = {
       return withAvatar(data.user ?? data)
     } catch (e) {
       throw toError(e, 'Gagal menyimpan profil')
+    }
+  },
+
+  // Upload foto profil ke BE (Supabase Storage). Mengembalikan URL publik.
+  async uploadAvatar(file) {
+    const body = new FormData()
+    body.append('image', file)
+    try {
+      const res = await api.post('/auth/avatar', body, { headers: { 'Content-Type': 'multipart/form-data' } })
+      return unwrap(res).avatar_url
+    } catch (e) {
+      throw toError(e, 'Gagal mengunggah foto profil')
     }
   },
 

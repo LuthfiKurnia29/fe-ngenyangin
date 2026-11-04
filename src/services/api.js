@@ -14,9 +14,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    const isAuthRoute = err.config?.url?.startsWith('/auth/')
-    // Jangan redirect kalau 401 berasal dari login (password salah)
-    if (err.response?.status === 401 && !isAuthRoute) {
+    const url = err.config?.url || ''
+    // Jangan redirect kalau 401 berasal dari login/register (password salah)
+    const isLoginRoute = url.startsWith('/auth/login') || url.startsWith('/auth/register')
+    // 401 di /auth/me, /auth/profile, dst. = token tidak valid -> bersihkan sesi & ke halaman login
+    if (err.response?.status === 401 && !isLoginRoute) {
       localStorage.removeItem('ngenyangin_token')
       localStorage.removeItem('ngenyangin_user')
       window.location.href = '/masuk'

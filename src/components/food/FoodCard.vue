@@ -14,6 +14,11 @@ const cart = useCartStore()
 const auth = useAuthStore()
 const notify = useNotificationStore()
 
+// gambar cadangan (SVG) bila produk belum punya gambar / gambar gagal dimuat
+const placeholder = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="100%" height="100%" fill="#E8F0EA"/><text x="50%" y="50%" fill="#6B7C70" font-family="sans-serif" font-size="20" text-anchor="middle" dominant-baseline="middle">Tanpa gambar</text></svg>'
+)
+
 function formatPrice(price) {
   return 'Rp ' + Number(price || 0).toLocaleString('id-ID')
 }
@@ -44,8 +49,9 @@ function addToCart(e) {
     <!-- Food Image -->
     <div class="relative overflow-hidden" style="aspect-ratio: 4/3;">
       <img
-        :src="food.image"
+        :src="food.image || placeholder"
         :alt="food.name"
+        @error="$event.target.src = placeholder"
         class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         loading="lazy"
       />
@@ -89,10 +95,12 @@ function addToCart(e) {
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
           </svg>
-          {{ (food.outlet || '').split(',')[0] }}
+          {{ (food.outlet || '').split(',')[0] || 'Lokasi belum diisi' }}
         </span>
-        <span class="text-border">•</span>
-        <span class="text-accent font-medium">Ambil &lt; {{ food.pickupDeadline }}</span>
+        <template v-if="food.pickupDeadline">
+          <span class="text-border">•</span>
+          <span class="text-accent font-medium">Ambil &lt; {{ food.pickupDeadline }}</span>
+        </template>
       </div>
 
       <!-- Safety Badge -->

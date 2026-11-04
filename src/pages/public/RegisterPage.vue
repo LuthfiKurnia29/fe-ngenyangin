@@ -14,6 +14,7 @@ const email = ref('')
 const phone = ref('')
 const password = ref('')
 const selectedRole = ref('')
+const gender = ref('')
 const formError = ref('')
 
 const roles = [
@@ -32,6 +33,7 @@ async function handleRegister() {
       name: name.value,
       email: email.value,
       phone: phone.value,
+      gender: selectedRole.value === 'consumer' ? gender.value : undefined,
       password: password.value,
       role: selectedRole.value
     })
@@ -78,6 +80,15 @@ async function handleRegister() {
           <FormInput v-model="name" label="Nama Lengkap" placeholder="Masukkan nama lengkap" required />
           <FormInput v-model="email" label="Email" type="email" placeholder="contoh@email.com" required />
           <FormInput v-model="phone" label="Nomor Telepon" placeholder="0812-3456-7890" />
+          <div v-if="selectedRole === 'consumer'">
+            <label class="block text-sm font-medium text-text-primary mb-1.5">Jenis Kelamin</label>
+            <select v-model="gender" class="form-input-base">
+              <option value="">Pilih (opsional)</option>
+              <option value="male">Laki-laki</option>
+              <option value="female">Perempuan</option>
+            </select>
+            <p class="text-xs text-text-secondary mt-1">Dipakai untuk ikon profil bila belum ada foto.</p>
+          </div>
           <FormInput v-model="password" label="Password" type="password" placeholder="Minimal 6 karakter" required />
 
           <div v-if="formError" class="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-error">

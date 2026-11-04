@@ -1,4 +1,5 @@
 <script setup>
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -85,11 +86,7 @@ function goHome() {
             aria-label="Menu profil"
             :aria-expanded="profileOpen"
           >
-            <img
-              :src="`https://api.dicebear.com/7.x/avataaars/svg?seed=${auth.userName}`"
-              :alt="auth.userName"
-              class="w-8 h-8 rounded-full bg-primary-soft"
-            />
+            <UserAvatar :avatar="auth.user?.avatar" :role="auth.role" :gender="auth.user?.gender" :name="auth.userName" size="w-8 h-8" />
             <svg class="w-4 h-4 text-text-secondary hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>

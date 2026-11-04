@@ -4,19 +4,23 @@ const BASE = '/products'
 
 const unwrap = (res) => res.data?.data ?? res.data
 
-// Samakan nama field BE dengan yang dipakai komponen FE
+// Samakan nama kolom BE (snake_case) dengan field yang dipakai komponen FE (camelCase)
 const mapFood = (f) => ({
   ...f,
-  price: f.price ?? f.harga ?? 0,
-  image: f.image ?? f.image_url ?? '',
-  // field yang dipakai FoodCard tapi belum ada di tabel BE
-  supplierName: f.supplierName ?? 'Supplier',
-  outlet: f.outlet ?? '-',
-  pickupDeadline: f.pickupDeadline ?? '-',
-  originalPrice: f.originalPrice ?? f.price ?? f.harga ?? 0,
-  discountPrice: f.discountPrice ?? f.price ?? f.harga ?? 0,
+  supplierId: f.supplier_id ?? f.supplierId,
+  // data toko diutamakan dari profil supplier (join users), fallback ke kolom di products
+  supplierName: f.supplier?.outlet || f.supplier?.name || f.supplier_name || f.supplierName || 'Supplier',
+  outlet: f.supplier?.address || f.outlet || f.address || '',
+  address: f.supplier?.address || f.address || '',
+  supplierPhone: f.supplier?.phone ?? '',
+  image: f.image_url ?? f.image ?? '',
+  originalPrice: f.original_price ?? f.originalPrice ?? 0,
+  discountPrice: f.discount_price ?? f.discountPrice ?? 0,
   discount: f.discount ?? 0,
-  isActive: f.is_empty === undefined ? true : !f.is_empty,
+  pickupDeadline: f.pickup_deadline ?? f.pickupDeadline ?? '',
+  safetyApproved: f.safety_approved ?? f.safetyApproved ?? false,
+  isActive: f.is_active ?? f.isActive ?? true,
+  tags: f.tags ?? [],
 })
 
 export const foodService = {
@@ -46,8 +50,7 @@ export const foodService = {
   },
 
   async getBySupplierId(supplierId) {
-    const foods = await this.getAll()
-    return foods.filter(f => f.supplierId === supplierId)
+    return this.getAll({ supplier_id: supplierId })
   },
 
   async getCategories() {
@@ -62,6 +65,16 @@ export const foodService = {
   async update(id, data) {
     const res = await api.put(`${BASE}/${id}`, data)
     return mapFood(unwrap(res))
+  },
+
+  // Upload gambar ke BE (Supabase Storage). Mengembalikan URL publik.
+  async uploadImage(file) {
+    const body = new FormData()
+    body.append('image', file)
+    const res = await api.post(`${BASE}/upload`, body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return unwrap(res).image_url
   },
 
   async remove(id) {

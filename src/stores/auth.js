@@ -63,6 +63,16 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Ambil data terbaru dari server (BE) lalu simpan ke store
+  async function fetchMe() {
+    try {
+      const me = await userService.getById()
+      user.value = { ...user.value, ...me }
+      localStorage.setItem('ngenyangin_user', JSON.stringify(user.value))
+    } catch { /* pakai data lokal bila gagal */ }
+    return user.value
+  }
+
   async function logout() {
   await userService.logout()
   user.value = null
@@ -70,5 +80,5 @@ export const useAuthStore = defineStore('auth', () => {
   localStorage.removeItem('ngenyangin_token')
 }
 
-  return { user, isLoading, error, isLoggedIn, role, userName, login, register, updateProfile, logout }
+  return { user, isLoading, error, isLoggedIn, role, userName, login, register, updateProfile, fetchMe, logout }
 })
