@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { foodService } from '@/services/foodService'
+import { categoryService } from '@/services/categoryService'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notifications'
 import FormInput from '@/components/base/FormInput.vue'
@@ -14,10 +15,12 @@ const notify = useNotificationStore()
 
 const isEdit = route.name === 'EditFood'
 const isSubmitting = ref(false)
+const categoriesLoading = ref(true)
+const categories = ref([])
 const safetyChecked = ref(false)
 
 const form = ref({
-  name: '', category: 'Makanan Berat', originalPrice: '',
+  name: '', categoryId: '', originalPrice: '',
   discountPrice: '', stock: '', pickupDeadline: '20:00',
   description: '', image: ''
 })
@@ -52,14 +55,29 @@ function removeImage() {
 
 // Mode edit: isi form dari data yang ada
 onMounted(async () => {
+  try {
+    categories.value = await categoryService.getAll()
+  } catch {
+    notify.error('Gagal memuat kategori')
+  } finally {
+    categoriesLoading.value = false
+  }
+
   if (!isEdit) return
   try {
     const f = await foodService.getById(route.params.id)
+    const matchingCategory = categories.value.find(
+      (category) => category.name?.toLowerCase() === f.category?.toLowerCase()
+    )
     form.value = {
-      name: f.name, category: f.category, originalPrice: f.originalPrice,
-      discountPrice: f.discountPrice, stock: f.stock,
+      name: f.name,
+      categoryId: f.categoryId ?? matchingCategory?.id ?? '',
+      originalPrice: f.originalPrice,
+      discountPrice: f.discountPrice,
+      stock: f.stock,
       pickupDeadline: f.pickupDeadline === '-' ? '' : f.pickupDeadline,
-      description: f.description || '', image: f.image || '',
+      description: f.description || '',
+      image: f.image || '',
     }
     imagePreview.value = f.image || ''
     safetyChecked.value = !!f.safetyApproved
@@ -69,11 +87,13 @@ onMounted(async () => {
   }
 })
 
-const categoriesList = ['Makanan Berat', 'Jajanan', 'Roti & Kue', 'Minuman', 'Sayur & Buah']
-
 async function submit() {
-  if (!form.value.name || !form.value.discountPrice || !form.value.stock) {
-    notify.error('Nama, harga diskon, dan stok wajib diisi')
+  if (!form.value.name || !form.value.categoryId || !form.value.discountPrice || !form.value.stock) {
+    notify.error('Nama, kategori, harga diskon, dan stok wajib diisi')
+    return
+  }
+  if (Number(form.value.originalPrice || form.value.discountPrice) < Number(form.value.discountPrice)) {
+    notify.error('Harga asli tidak boleh lebih kecil dari harga diskon')
     return
   }
   if (!safetyChecked.value) {
@@ -89,7 +109,7 @@ async function submit() {
     const original = Number(form.value.originalPrice) || Number(form.value.discountPrice)
     const payload = {
       name: form.value.name,
-      category: form.value.category,
+      category_id: Number(form.value.categoryId),
       description: form.value.description,
       originalPrice: original,
       discountPrice: Number(form.value.discountPrice),
@@ -130,9 +150,11 @@ async function submit() {
 
       <div>
         <label class="block text-sm font-medium text-text-primary mb-1.5">Kategori <span class="text-error">*</span></label>
-        <select v-model="form.category" class="form-input-base">
-          <option v-for="c in categoriesList" :key="c" :value="c">{{ c }}</option>
+        <select v-model="form.categoryId" class="form-input-base" :disabled="categoriesLoading || !categories.length" required>
+          <option value="" disabled>{{ categoriesLoading ? 'Memuat kategori...' : 'Pilih kategori' }}</option>
+          <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
         </select>
+        <p v-if="!categoriesLoading && !categories.length" class="text-xs text-error mt-1">Kategori belum tersedia.</p>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
