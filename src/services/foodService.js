@@ -13,6 +13,8 @@ const mapFood = (f) => ({
   outlet: f.supplier?.address || f.outlet || f.address || '',
   address: f.supplier?.address || f.address || '',
   supplierPhone: f.supplier?.phone ?? '',
+  categoryId: f.category_id ?? f.categoryId ?? f.category_detail?.id ?? null,
+  categoryDetail: f.category_detail ?? null,
   image: f.image_url ?? f.image ?? '',
   originalPrice: f.original_price ?? f.originalPrice ?? 0,
   discountPrice: f.discount_price ?? f.discountPrice ?? 0,
