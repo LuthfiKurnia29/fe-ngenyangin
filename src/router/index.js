@@ -19,16 +19,12 @@ const CheckoutPage = () => import('@/pages/consumer/CheckoutPage.vue')
 const OrdersPage = () => import('@/pages/consumer/OrdersPage.vue')
 const OrderStatusPage = () => import('@/pages/consumer/OrderStatusPage.vue')
 const ReviewPage = () => import('@/pages/consumer/ReviewPage.vue')
+const ProfilePage = () => import('@/pages/consumer/ProfilePage.vue')
 
 // Supplier Pages
 const SupplierDashboard = () => import('@/pages/supplier/SupplierDashboard.vue')
 const AddFoodPage = () => import('@/pages/supplier/AddFoodPage.vue')
 const IncomingOrdersPage = () => import('@/pages/supplier/IncomingOrdersPage.vue')
-
-// Courier Pages
-const CourierDashboard = () => import('@/pages/courier/CourierDashboard.vue')
-const DeliveryTaskPage = () => import('@/pages/courier/DeliveryTaskPage.vue')
-const UploadProofPage = () => import('@/pages/courier/UploadProofPage.vue')
 
 // Admin Pages
 const AdminDashboard = () => import('@/pages/admin/AdminDashboard.vue')
@@ -61,6 +57,7 @@ const routes = [
       { path: 'pesanan', name: 'Orders', component: OrdersPage, meta: { role: 'consumer' } },
       { path: 'pesanan/:id', name: 'OrderStatus', component: OrderStatusPage, meta: { role: 'consumer' } },
       { path: 'ulasan/:id', name: 'Review', component: ReviewPage, meta: { role: 'consumer' } },
+      { path: 'profil', name: 'Profile', component: ProfilePage, meta: { role: 'consumer' } },
     ]
   },
 
@@ -72,18 +69,8 @@ const routes = [
       { path: '', name: 'SupplierDashboard', component: SupplierDashboard, meta: { role: 'supplier' } },
       { path: 'tambah', name: 'AddFood', component: AddFoodPage, meta: { role: 'supplier' } },
       { path: 'edit/:id', name: 'EditFood', component: AddFoodPage, meta: { role: 'supplier' } },
+      { path: 'profil', name: 'SupplierProfile', component: () => import('@/pages/consumer/ProfilePage.vue'), meta: { role: 'supplier' } },
       { path: 'pesanan', name: 'IncomingOrders', component: IncomingOrdersPage, meta: { role: 'supplier' } },
-    ]
-  },
-
-  // Courier routes
-  {
-    path: '/kurir',
-    component: DashboardLayout,
-    children: [
-      { path: '', name: 'CourierDashboard', component: CourierDashboard, meta: { role: 'courier' } },
-      { path: 'tugas/:id', name: 'DeliveryTask', component: DeliveryTaskPage, meta: { role: 'courier' } },
-      { path: 'bukti/:id', name: 'UploadProof', component: UploadProofPage, meta: { role: 'courier' } },
     ]
   },
 
@@ -99,6 +86,10 @@ const routes = [
       { path: 'pengaturan', name: 'Settings', component: SettingsPage, meta: { role: 'admin' } },
     ]
   },
+
+  // Alias alamat umum
+  { path: '/login', redirect: '/masuk' },
+  { path: '/register', redirect: '/daftar' },
 
   // Catch-all
   { path: '/:pathMatch(.*)*', redirect: '/' }
@@ -136,7 +127,6 @@ export function getRoleDashboard(role) {
   const map = {
     consumer: '/jelajah',
     supplier: '/supplier',
-    courier: '/kurir',
     admin: '/admin'
   }
   return map[role] || '/'

@@ -6,6 +6,7 @@ import CategoryTile from '@/components/food/CategoryTile.vue'
 
 const foods = ref([])
 const isLoading = ref(true)
+const loadError = ref('')
 const searchQuery = ref('')
 const activeCategory = ref('Semua')
 const categories = ref([])
@@ -23,6 +24,9 @@ onMounted(async () => {
     ])
     foods.value = allFoods
     categories.value = cats
+  } catch (e) {
+    console.error('Gagal memuat katalog:', e)
+    loadError.value = e.response?.data?.message || e.message
   } finally {
     isLoading.value = false
   }
@@ -37,7 +41,7 @@ const filteredFoods = computed(() => {
     const q = searchQuery.value.toLowerCase()
     result = result.filter(f =>
       f.name.toLowerCase().includes(q) ||
-      f.supplierName.toLowerCase().includes(q)
+      (f.supplierName || '').toLowerCase().includes(q)
     )
   }
   return result
@@ -110,8 +114,8 @@ function selectCategory(cat) {
       <!-- Empty state -->
       <div v-else-if="filteredFoods.length === 0" class="text-center py-16">
         <p class="text-4xl mb-4">🍃</p>
-        <p class="text-text-primary font-semibold text-lg">Belum ada makanan ditemukan</p>
-        <p class="text-text-secondary text-sm mt-1">Coba kata kunci atau kategori lain</p>
+        <p class="text-text-primary font-semibold text-lg">{{ loadError ? 'Gagal memuat katalog' : 'Belum ada makanan ditemukan' }}</p>
+        <p class="text-text-secondary text-sm mt-1">{{ loadError || 'Coba kata kunci atau kategori lain' }}</p>
       </div>
 
       <!-- Food grid -->

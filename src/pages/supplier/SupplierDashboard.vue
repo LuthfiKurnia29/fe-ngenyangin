@@ -30,6 +30,14 @@ const stats = computed(() => ({
   revenue: ordersStore.orders.filter(o => o.status === 'Selesai').reduce((s, o) => s + o.total, 0)
 }))
 
+async function removeFood(food) {
+  if (!confirm(`Hapus "${food.name}"?`)) return
+  try {
+    await foodService.remove(food.id)
+    myFoods.value = myFoods.value.filter(f => f.id !== food.id)
+  } catch { alert('Gagal menghapus makanan') }
+}
+
 function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
 </script>
 
@@ -82,6 +90,8 @@ function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
             <p class="text-xs text-text-secondary">Stok: {{ food.stock }} • {{ formatPrice(food.discountPrice) }}</p>
           </div>
           <StatusBadge :status="food.isActive ? 'Aktif' : 'Nonaktif'" size="sm" />
+          <BaseButton variant="ghost" size="sm" @click="router.push(`/supplier/edit/${food.id}`)">Edit</BaseButton>
+          <BaseButton variant="ghost" size="sm" @click="removeFood(food)">Hapus</BaseButton>
         </div>
       </div>
     </div>

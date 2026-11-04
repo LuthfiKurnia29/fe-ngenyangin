@@ -1,4 +1,5 @@
 <script setup>
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -85,11 +86,7 @@ function goHome() {
             aria-label="Menu profil"
             :aria-expanded="profileOpen"
           >
-            <img
-              :src="`https://api.dicebear.com/7.x/avataaars/svg?seed=${auth.userName}`"
-              :alt="auth.userName"
-              class="w-8 h-8 rounded-full bg-primary-soft"
-            />
+            <UserAvatar :avatar="auth.user?.avatar" :role="auth.role" :gender="auth.user?.gender" :name="auth.userName" size="w-8 h-8" />
             <svg class="w-4 h-4 text-text-secondary hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
@@ -105,6 +102,17 @@ function goHome() {
               <p class="text-sm font-semibold text-text-primary">{{ auth.userName }}</p>
               <p class="text-xs text-text-secondary capitalize">{{ auth.role }}</p>
             </div>
+            <RouterLink
+              v-if="auth.role === 'consumer'"
+              to="/profil"
+              @click="profileOpen = false"
+              class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-primary hover:bg-primary-soft transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
+              Edit Profil
+            </RouterLink>
             <button
               @click="logout"
               class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-error hover:bg-red-50 transition-colors"
@@ -137,6 +145,7 @@ function goHome() {
         <template v-if="auth.role === 'consumer'">
           <RouterLink to="/jelajah" class="sidebar-link" @click="mobileMenuOpen = false">Jelajah Makanan</RouterLink>
           <RouterLink to="/pesanan" class="sidebar-link" @click="mobileMenuOpen = false">Pesanan Saya</RouterLink>
+          <RouterLink to="/profil" class="sidebar-link" @click="mobileMenuOpen = false">Edit Profil</RouterLink>
         </template>
         <template v-if="!auth.isLoggedIn">
           <RouterLink to="/masuk" class="sidebar-link" @click="mobileMenuOpen = false">Masuk</RouterLink>
