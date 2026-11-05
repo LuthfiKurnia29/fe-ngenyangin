@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getRoleDashboard } from '@/router/index.js'
 import BaseButton from '@/components/base/BaseButton.vue'
 import FormInput from '@/components/base/FormInput.vue'
 
@@ -29,7 +28,7 @@ async function handleRegister() {
     return
   }
   try {
-    const user = await auth.register({
+    await auth.register({
       name: name.value,
       email: email.value,
       phone: phone.value,
@@ -37,7 +36,7 @@ async function handleRegister() {
       password: password.value,
       role: selectedRole.value
     })
-    router.push(getRoleDashboard(user.role))
+    router.push({ name: 'Login', query: { registered: '1' } })
   } catch (err) {
     formError.value = err.message
   }

@@ -25,6 +25,7 @@ const ProfilePage = () => import('@/pages/consumer/ProfilePage.vue')
 const SupplierDashboard = () => import('@/pages/supplier/SupplierDashboard.vue')
 const AddFoodPage = () => import('@/pages/supplier/AddFoodPage.vue')
 const IncomingOrdersPage = () => import('@/pages/supplier/IncomingOrdersPage.vue')
+const SupplierProfilePage = () => import('@/pages/supplier/SupplierProfilePage.vue')
 
 // Admin Pages
 const AdminDashboard = () => import('@/pages/admin/AdminDashboard.vue')
@@ -69,7 +70,7 @@ const routes = [
       { path: '', name: 'SupplierDashboard', component: SupplierDashboard, meta: { role: 'supplier' } },
       { path: 'tambah', name: 'AddFood', component: AddFoodPage, meta: { role: 'supplier' } },
       { path: 'edit/:id', name: 'EditFood', component: AddFoodPage, meta: { role: 'supplier' } },
-      { path: 'profil', name: 'SupplierProfile', component: () => import('@/pages/consumer/ProfilePage.vue'), meta: { role: 'supplier' } },
+      { path: 'profil', name: 'SupplierProfile', component: SupplierProfilePage, meta: { role: 'supplier' } },
       { path: 'pesanan', name: 'IncomingOrders', component: IncomingOrdersPage, meta: { role: 'supplier' } },
     ]
   },

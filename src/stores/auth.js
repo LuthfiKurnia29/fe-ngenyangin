@@ -35,10 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     error.value = null
     try {
-      const newUser = await userService.register(data)
-      user.value = newUser
-      localStorage.setItem('ngenyangin_user', JSON.stringify(newUser))
-      return newUser
+      return await userService.register(data)
     } catch (err) {
       error.value = err.message
       throw err

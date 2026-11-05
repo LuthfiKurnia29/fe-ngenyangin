@@ -36,15 +36,10 @@ export const userService = {
   async register(payload) {
     // payload: { name, email, password, role }
     try {
-      await api.post('/auth/register', payload)
+      const res = await api.post('/auth/register', payload)
+      return unwrap(res)
     } catch (e) {
       throw toError(e, 'Pendaftaran gagal')
-    }
-    // login otomatis setelah daftar; error-nya dibiarkan apa adanya
-    try {
-      return await this.login(payload.email, payload.password)
-    } catch (e) {
-      throw new Error(`Akun terdaftar, tapi masuk otomatis gagal: ${e.message}`)
     }
   },
 

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { foodService } from '@/services/foodService'
+import { categoryService } from '@/services/categoryService'
 import FoodCard from '@/components/food/FoodCard.vue'
 import CategoryTile from '@/components/food/CategoryTile.vue'
 
@@ -8,22 +9,20 @@ const foods = ref([])
 const isLoading = ref(true)
 const loadError = ref('')
 const searchQuery = ref('')
-const activeCategory = ref('Semua')
+const activeCategory = ref('all')
 const categories = ref([])
-
-const categoryEmojis = {
-  'Semua': '🍽️', 'Makanan Berat': '🍛', 'Jajanan': '🍢',
-  'Roti & Kue': '🍞', 'Minuman': '🥤', 'Sayur & Buah': '🥬'
-}
 
 onMounted(async () => {
   try {
     const [allFoods, cats] = await Promise.all([
       foodService.getAll(),
-      foodService.getCategories()
+      categoryService.getAll()
     ])
     foods.value = allFoods
-    categories.value = cats
+    categories.value = [
+      { id: 'all', name: 'Semua', image_url: '' },
+      ...cats,
+    ]
   } catch (e) {
     console.error('Gagal memuat katalog:', e)
     loadError.value = e.response?.data?.message || e.message
@@ -34,8 +33,12 @@ onMounted(async () => {
 
 const filteredFoods = computed(() => {
   let result = foods.value
-  if (activeCategory.value && activeCategory.value !== 'Semua') {
-    result = result.filter(f => f.category === activeCategory.value)
+  if (activeCategory.value !== 'all') {
+    const selectedCategory = categories.value.find((category) => category.id === activeCategory.value)
+    result = result.filter(f =>
+      String(f.categoryId) === String(activeCategory.value) ||
+      f.category === selectedCategory?.name
+    )
   }
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
@@ -47,8 +50,12 @@ const filteredFoods = computed(() => {
   return result
 })
 
+const activeCategoryLabel = computed(() =>
+  categories.value.find((category) => category.id === activeCategory.value)?.name || 'Semua'
+)
+
 function selectCategory(cat) {
-  activeCategory.value = cat
+  activeCategory.value = cat.id
 }
 </script>
 
@@ -81,10 +88,10 @@ function selectCategory(cat) {
         <div class="flex gap-3 pb-2">
           <CategoryTile
             v-for="cat in categories"
-            :key="cat"
-            :label="cat"
-            :emoji="categoryEmojis[cat] || '🍽️'"
-            :active="activeCategory === cat"
+            :key="cat.id"
+            :label="cat.name"
+            :image="cat.image_url"
+            :active="activeCategory === cat.id"
             @click="selectCategory(cat)"
           />
         </div>
@@ -94,7 +101,7 @@ function selectCategory(cat) {
       <div class="flex items-center justify-between mb-4">
         <p class="text-sm text-text-secondary">
           Menampilkan <strong class="text-text-primary">{{ filteredFoods.length }}</strong> makanan
-          <span v-if="activeCategory !== 'Semua'"> di "{{ activeCategory }}"</span>
+          <span v-if="activeCategory !== 'all'"> di "{{ activeCategoryLabel }}"</span>
         </p>
       </div>
 
