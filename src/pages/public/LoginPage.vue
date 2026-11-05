@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getRoleDashboard } from '@/router/index.js'
@@ -13,6 +13,7 @@ const auth = useAuthStore()
 const email = ref('')
 const password = ref('')
 const formError = ref('')
+const registrationSuccess = computed(() => route.query.registered === '1')
 
 async function handleLogin() {
   formError.value = ''
@@ -37,7 +38,7 @@ const demoAccounts = [
 
 function fillDemo(acc) {
   email.value = acc.email
-  password.value = 'demo123'
+  password.value = 'password123'
 }
 </script>
 
@@ -51,6 +52,10 @@ function fillDemo(acc) {
           <img src="@/assets/ngenyangin.svg" alt="NGENYANGIN" class="h-10 mx-auto mb-4" />
           <h1 class="font-poppins font-bold text-xl text-primary-dark">Masuk ke Akun</h1>
           <p class="text-sm text-text-secondary mt-1">Selamat datang kembali! Pilih peran dan masuk.</p>
+        </div>
+
+        <div v-if="registrationSuccess" class="mb-6 p-3 bg-primary-soft border border-primary/20 rounded-md text-sm text-primary">
+          Akun berhasil dibuat. Silakan masuk menggunakan email dan password yang sudah didaftarkan.
         </div>
 
         <!-- Demo accounts quick-fill -->

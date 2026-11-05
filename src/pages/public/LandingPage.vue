@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { foodService } from '@/services/foodService'
+import { categoryService } from '@/services/categoryService'
 import FoodCard from '@/components/food/FoodCard.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 
@@ -9,16 +10,23 @@ const router = useRouter()
 const featuredFoods = ref([])
 const isLoading = ref(true)
 const errorMessage = ref('')
+const categories = ref([])
+const categoriesLoading = ref(true)
 
 onMounted(async () => {
   try {
-    const all = await foodService.getAll()
+    const [all, categoryItems] = await Promise.all([
+      foodService.getAll(),
+      categoryService.getAll(),
+    ])
     featuredFoods.value = all.slice(0, 4)
+    categories.value = categoryItems
   } catch (err) {
     console.error('Gagal memuat makanan:', err)
     errorMessage.value = 'Gagal memuat makanan. Pastikan server berjalan.'
   } finally {
     isLoading.value = false
+    categoriesLoading.value = false
   }
 })
 
@@ -34,13 +42,6 @@ const testimonials = [
   { name: 'Bu Ani', role: 'Pemilik Warung', text: 'Sebagai supplier, NGENYANGIN membantu saya menjual makanan yang biasanya terbuang. Pendapatan jadi lebih stabil.', rating: 5 },
 ]
 
-const categories = [
-  { label: 'Makanan Berat', emoji: '🍛' },
-  { label: 'Jajanan', emoji: '🍢' },
-  { label: 'Roti & Kue', emoji: '🍞' },
-  { label: 'Minuman', emoji: '🥤' },
-  { label: 'Sayur & Buah', emoji: '🥬' },
-]
 </script>
 
 <template>
@@ -113,17 +114,22 @@ const categories = [
           <h2 class="font-poppins font-semibold text-headline text-primary-dark">Kategori Makanan</h2>
           <p class="text-text-secondary mt-2">Pilih kategori favoritmu dan temukan surplus terbaik</p>
         </div>
-        <div class="flex justify-center gap-4 flex-wrap">
+        <div v-if="categoriesLoading" class="flex justify-center gap-4 flex-wrap">
+          <div v-for="i in 5" :key="i" class="w-28 h-24 rounded-md bg-border/30 animate-pulse"></div>
+        </div>
+        <div v-else-if="categories.length" class="flex justify-center gap-4 flex-wrap">
           <button
             v-for="cat in categories"
-            :key="cat.label"
+            :key="cat.id"
             @click="router.push('/daftar')"
             class="flex flex-col items-center gap-2 p-4 bg-surface rounded-md border border-border hover:border-primary hover:shadow-card hover:-translate-y-1 transition-all min-w-[100px] cursor-pointer"
           >
-            <span class="text-3xl">{{ cat.emoji }}</span>
-            <span class="text-xs font-medium text-text-primary">{{ cat.label }}</span>
+            <img v-if="cat.image_url" :src="cat.image_url" :alt="cat.name" class="w-10 h-10 object-contain" />
+            <span v-else class="text-3xl">🍽️</span>
+            <span class="text-xs font-medium text-text-primary">{{ cat.name }}</span>
           </button>
         </div>
+        <p v-else class="text-center text-sm text-text-secondary">Belum ada kategori makanan.</p>
       </div>
     </section>
 

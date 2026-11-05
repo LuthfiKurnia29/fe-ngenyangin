@@ -21,7 +21,8 @@ defineEmits(['click'])
     :aria-pressed="active"
     :aria-label="`Kategori ${label}`"
   >
-    <span class="text-2xl leading-none">{{ emoji }}</span>
+    <img v-if="image" :src="image" :alt="label" class="w-8 h-8 object-contain" />
+    <span v-else class="text-2xl leading-none">{{ emoji }}</span>
     <span class="text-xs font-medium leading-tight text-center">{{ label }}</span>
   </button>
 </template>
