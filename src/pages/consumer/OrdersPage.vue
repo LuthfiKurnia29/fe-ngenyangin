@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useOrdersStore } from '@/stores/orders'
@@ -9,7 +9,21 @@ const router = useRouter()
 const auth = useAuthStore()
 const ordersStore = useOrdersStore()
 
-onMounted(() => { ordersStore.fetchOrders(auth.user.id) })
+const defaultImage = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'
+
+async function loadOrders() {
+  if (!auth.user) {
+    await auth.fetchMe()
+  }
+  if (auth.user?.id) {
+    ordersStore.fetchOrders(auth.user.id, auth.user)
+  }
+}
+
+onMounted(loadOrders)
+watch(() => auth.user, (u) => {
+  if (u?.id) ordersStore.fetchOrders(u.id, u)
+})
 
 function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
 function formatDate(d) { return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }
@@ -39,7 +53,12 @@ function formatDate(d) { return new Date(d).toLocaleDateString('id-ID', { day: '
         >
           <div class="flex items-start justify-between gap-3">
             <div class="flex gap-3 min-w-0">
-              <img :src="order.foodImage" :alt="order.foodName" class="w-14 h-14 rounded object-cover flex-shrink-0" />
+              <img
+                :src="order.foodImage || defaultImage"
+                :alt="order.foodName"
+                class="w-14 h-14 rounded object-cover flex-shrink-0 bg-border/20 border border-border"
+                @error="(e) => e.target.src = defaultImage"
+              />
               <div class="min-w-0">
                 <p class="font-semibold text-sm text-text-primary truncate">{{ order.foodName }}</p>
                 <p class="text-xs text-text-secondary">{{ order.supplierName }} • {{ order.quantity }}x</p>

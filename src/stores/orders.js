@@ -6,19 +6,19 @@ export const useOrdersStore = defineStore('orders', () => {
   const orders = ref([])
   const isLoading = ref(false)
 
-  async function fetchOrders(consumerId) {
+  async function fetchOrders(consumerId, user = null) {
     isLoading.value = true
     try {
-      orders.value = await orderService.getByConsumerId(consumerId)
+      orders.value = await orderService.getByConsumerId(consumerId, user)
     } finally {
       isLoading.value = false
     }
   }
 
-  async function fetchSupplierOrders(supplierId) {
+  async function fetchSupplierOrders(supplierId, user = null) {
     isLoading.value = true
     try {
-      orders.value = await orderService.getBySupplierId(supplierId)
+      orders.value = await orderService.getBySupplierId(supplierId, user)
     } finally {
       isLoading.value = false
     }

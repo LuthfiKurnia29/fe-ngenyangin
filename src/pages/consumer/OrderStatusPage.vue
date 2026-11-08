@@ -43,7 +43,12 @@ function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
           </div>
 
           <div class="flex gap-4 items-center border-t border-border pt-3">
-            <img :src="order.foodImage" :alt="order.foodName" class="w-16 h-16 rounded object-cover" />
+            <img
+              :src="order.foodImage || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'"
+              :alt="order.foodName"
+              class="w-16 h-16 rounded object-cover flex-shrink-0 bg-border/20 border border-border"
+              @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'"
+            />
             <div class="flex-1">
               <p class="font-semibold text-sm">{{ order.foodName }}</p>
               <p class="text-xs text-text-secondary">{{ order.supplierName }} • {{ order.quantity }}x</p>
