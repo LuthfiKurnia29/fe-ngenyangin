@@ -103,6 +103,14 @@ async function cancelOrder(order) {
   }
 }
 
+// Payment badge
+function paymentBadgeClass(status) {
+  if (!status || status === 'Lunas') return 'bg-green-50 text-green-700 border border-green-200'
+  if (status === 'Menunggu Pembayaran') return 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+  if (status === 'Gagal' || status === 'Dibatalkan') return 'bg-red-50 text-red-700 border border-red-200'
+  return 'bg-gray-50 text-gray-600 border border-gray-200'
+}
+
 // Filter and Tab Counts
 const counts = computed(() => {
   const all = ordersStore.orders || []
@@ -302,6 +310,13 @@ const filteredOrders = computed(() => {
               ]"
             >
               <span>{{ order.deliveryMethod === 'courier' ? '🛵 Kurir' : '🏪 Ambil di Outlet' }}</span>
+            </span>
+            <!-- Payment status badge -->
+            <span
+              v-if="order.paymentStatus"
+              :class="['text-xs px-2.5 py-0.5 rounded-full font-medium', paymentBadgeClass(order.paymentStatus)]"
+            >
+              {{ order.paymentStatus }}
             </span>
             <StatusBadge :status="order.status" size="sm" />
           </div>

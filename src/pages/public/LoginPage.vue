@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getRoleDashboard } from '@/router/index.js'
 import BaseButton from '@/components/base/BaseButton.vue'
 import FormInput from '@/components/base/FormInput.vue'
+import Logo from '@/components/base/Logo.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -29,17 +30,6 @@ async function handleLogin() {
     formError.value = err.message
   }
 }
-
-const demoAccounts = [
-  { label: 'Konsumen', email: 'konsumen@demo.id' },
-  { label: 'Supplier', email: 'supplier@demo.id' },
-  { label: 'Admin', email: 'admin@demo.id' },
-]
-
-function fillDemo(acc) {
-  email.value = acc.email
-  password.value = 'password123'
-}
 </script>
 
 <template>
@@ -49,31 +39,15 @@ function fillDemo(acc) {
       <div class="bg-surface rounded-lg border border-border shadow-card p-8">
         <!-- Logo -->
         <div class="text-center mb-8">
-          <img src="@/assets/ngenyangin.svg" alt="NGENYANGIN" class="h-10 mx-auto mb-4" />
+          <div class="flex justify-center mb-4">
+            <Logo height="h-14" />
+          </div>
           <h1 class="font-poppins font-bold text-xl text-primary-dark">Masuk ke Akun</h1>
-          <p class="text-sm text-text-secondary mt-1">Selamat datang kembali! Pilih peran dan masuk.</p>
+          <p class="text-sm text-text-secondary mt-1">Selamat datang kembali!</p>
         </div>
 
         <div v-if="registrationSuccess" class="mb-6 p-3 bg-primary-soft border border-primary/20 rounded-md text-sm text-primary">
           Akun berhasil dibuat. Silakan masuk menggunakan email dan password yang sudah didaftarkan.
-        </div>
-
-        <!-- Demo accounts quick-fill -->
-        <div class="mb-6">
-          <p class="text-xs text-text-secondary mb-2 font-medium">Akun Demo (klik untuk mengisi):</p>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="acc in demoAccounts"
-              :key="acc.email"
-              @click="fillDemo(acc)"
-              :class="[
-                'chip text-xs cursor-pointer transition-all hover:scale-105',
-                email === acc.email ? 'bg-primary text-white' : 'bg-primary-soft text-primary hover:bg-primary/20'
-              ]"
-            >
-              {{ acc.label }}
-            </button>
-          </div>
         </div>
 
         <!-- Form -->

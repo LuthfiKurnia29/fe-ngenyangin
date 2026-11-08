@@ -22,7 +22,7 @@ onMounted(async () => {
     stats.value.users = users.length
     stats.value.orders = orders.length
     stats.value.complaints = complaints.length
-    stats.value.revenue = orders.filter(o => o.status === 'Selesai').reduce((s, o) => s + o.total, 0)
+    stats.value.revenue = orders.filter(o => o.status === 'Selesai' && o.paymentStatus === 'Lunas').reduce((s, o) => s + o.total, 0)
     recentComplaints.value = complaints.slice(0, 5)
   } finally { isLoading.value = false }
 })
