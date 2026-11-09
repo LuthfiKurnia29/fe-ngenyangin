@@ -31,6 +31,9 @@ async function loadSuppliers() {
  * @param {string}  opts.search      - substring search on name / supplierName
  * @param {string}  opts.supplierId  - filter by supplierId (for SupplierStorePage)
  * @param {boolean} opts.discountOnly - only items with discount > 0
+ * @param {number}  opts.minDiscount - minimum discount percentage
+ * @param {number}  opts.pickupWithinHours - only items whose pickup deadline is within this many hours
+ * @param {string}  opts.locationQuery - substring search on outlet, address, or supplier name
  * @param {number}  opts.minPrice    - min discountPrice
  * @param {number}  opts.maxPrice    - max discountPrice
  * @returns {{ items: Array, total: number, page: number, totalPages: number }}
@@ -42,6 +45,9 @@ export async function getLocalFoods({
   search = '',
   supplierId = null,
   discountOnly = false,
+  minDiscount = 0,
+  pickupWithinHours = null,
+  locationQuery = '',
   minPrice = 0,
   maxPrice = Infinity,
 } = {}) {
@@ -71,6 +77,39 @@ export async function getLocalFoods({
   // Discount filter
   if (discountOnly) {
     result = result.filter(f => (f.discount || 0) > 0)
+  }
+
+  if (minDiscount > 0) {
+    result = result.filter(f => {
+      const discount = Number(f.discount) || (
+        Number(f.originalPrice) > 0
+          ? Math.floor((Number(f.originalPrice) - Number(f.discountPrice)) / Number(f.originalPrice) * 100)
+          : 0
+      )
+      return discount >= minDiscount
+    })
+  }
+
+  if (pickupWithinHours !== null && pickupWithinHours !== undefined) {
+    const now = new Date()
+    result = result.filter(f => {
+      if (!/^\d{1,2}:\d{2}$/.test(f.pickupDeadline || '')) return false
+      const [hours, minutes] = f.pickupDeadline.split(':').map(Number)
+      if (hours > 23 || minutes > 59) return false
+
+      const deadline = new Date(now)
+      deadline.setHours(hours, minutes, 0, 0)
+      const remainingHours = (deadline.getTime() - now.getTime()) / (60 * 60 * 1000)
+      return remainingHours >= 0 && remainingHours <= Number(pickupWithinHours)
+    })
+  }
+
+  if (locationQuery && locationQuery.trim()) {
+    const query = locationQuery.trim().toLowerCase()
+    result = result.filter(f =>
+      [f.outlet, f.address, f.supplierName]
+        .some(value => String(value || '').toLowerCase().includes(query))
+    )
   }
 
   // Price range filter

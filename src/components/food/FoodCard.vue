@@ -64,13 +64,14 @@ function addToCart(e) {
     :aria-label="`Lihat detail ${food.name}`"
   >
     <!-- Food Image -->
-    <div class="relative overflow-hidden" style="aspect-ratio: 4/3;">
+    <div class="relative aspect-[4/3] overflow-hidden bg-primary-soft">
       <img
         :src="food.image || placeholder"
         :alt="food.name"
         @error="$event.target.src = placeholder"
-        class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+        class="absolute inset-0 w-full h-full max-w-none object-cover object-center transition-transform duration-300 group-hover:scale-105"
         loading="lazy"
+        decoding="async"
       />
       <!-- Discount Badge -->
       <span v-if="food.discount > 0" class="discount-badge">-{{ food.discount }}%</span>
