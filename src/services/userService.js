@@ -19,6 +19,15 @@ const withAvatar = (user) => ({
 })
 
 export const userService = {
+  async getCount() {
+    try {
+      const res = await api.get('/auth/admin/user-count')
+      return unwrap(res).count
+    } catch (e) {
+      throw toError(e, 'Gagal mengambil jumlah pengguna')
+    }
+  },
+
   async login(email, password) {
     try {
       const res = await api.post('/auth/login', { email, password })

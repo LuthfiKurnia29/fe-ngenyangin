@@ -11,19 +11,22 @@ const auth = useAuthStore()
 const stats = ref({ users: 0, orders: 0, complaints: 0, revenue: 0 })
 const recentComplaints = ref([])
 const isLoading = ref(true)
+const loadError = ref('')
 
 onMounted(async () => {
   try {
     const [users, orders, complaints] = await Promise.all([
-      userService.getAll(),
+      userService.getCount(),
       orderService.getAll(),
       complaintService.getAll()
     ])
-    stats.value.users = users.length
+    stats.value.users = users
     stats.value.orders = orders.length
     stats.value.complaints = complaints.length
     stats.value.revenue = orders.filter(o => o.status === 'Selesai' && o.paymentStatus === 'Lunas').reduce((s, o) => s + o.total, 0)
     recentComplaints.value = complaints.slice(0, 5)
+  } catch (error) {
+    loadError.value = error.message
   } finally { isLoading.value = false }
 })
 
@@ -34,6 +37,9 @@ function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
   <div class="section-container py-6 md:py-10">
     <h1 class="font-poppins font-bold text-headline text-primary-dark mb-4">Dashboard Admin</h1>
     <p class="text-text-secondary mb-6">Selamat datang, {{ auth.userName }}!</p>
+    <p v-if="loadError" class="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-error mb-6">
+      Data dashboard belum dapat dimuat: {{ loadError }}
+    </p>
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <div class="bg-surface rounded-md border border-border p-5">
@@ -60,8 +66,8 @@ function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
     <div v-else class="divide-y divide-border">
       <div v-for="c in recentComplaints" :key="c.id" class="p-4 flex items-center justify-between">
         <div>
-          <p class="font-medium text-text-primary">{{ c.title }} ({{ c.userName }})</p>
-          <p class="text-xs text-text-secondary">{{ new Date(c.createdAt).toLocaleDateString('id-ID') }}</p>
+          <p class="font-medium text-text-primary">{{ c.title }} ({{ c.reporterName }})</p>
+          <p class="text-xs text-text-secondary">{{ new Date(c.receivedAt).toLocaleDateString('id-ID') }}</p>
         </div>
         <StatusBadge :status="c.status" size="sm" />
       </div>

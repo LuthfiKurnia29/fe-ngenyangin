@@ -192,10 +192,10 @@ async function save() {
       />
 
       <div class="flex flex-col-reverse sm:flex-row gap-3 pt-2">
-        <BaseButton type="button" variant="outline" full-width :disabled="!isDirty || isSaving" @click="reset">
+        <BaseButton type="button" variant="outline" class="w-full sm:flex-1" :disabled="!isDirty || isSaving" @click="reset">
           Batal
         </BaseButton>
-        <BaseButton type="submit" variant="primary" full-width :loading="isSaving" :disabled="!isDirty">
+        <BaseButton type="submit" variant="primary" class="w-full sm:flex-1" :loading="isSaving" :disabled="!isDirty">
           Simpan Perubahan
         </BaseButton>
       </div>
