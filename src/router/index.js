@@ -24,6 +24,10 @@ const OrdersPage = () => import('@/pages/consumer/OrdersPage.vue')
 const OrderStatusPage = () => import('@/pages/consumer/OrderStatusPage.vue')
 const ReviewPage = () => import('@/pages/consumer/ReviewPage.vue')
 const ProfilePage = () => import('@/pages/consumer/ProfilePage.vue')
+const AddressListPage = () => import('@/pages/consumer/AddressListPage.vue')
+const AddressFormPage = () => import('@/pages/consumer/AddressFormPage.vue')
+const SupplierStorePage = () => import('@/pages/consumer/SupplierStorePage.vue')
+const PaymentResultPage = () => import('@/pages/consumer/PaymentResultPage.vue')
 
 // Supplier Pages
 const SupplierDashboard = () => import('@/pages/supplier/SupplierDashboard.vue')
@@ -62,12 +66,18 @@ const routes = [
     children: [
       { path: 'jelajah', name: 'Browse', component: BrowsePage, meta: { role: 'consumer' } },
       { path: 'makanan/:id', name: 'FoodDetail', component: FoodDetailPage, meta: { role: 'consumer' } },
+      { path: 'toko/:supplierId', name: 'SupplierStore', component: SupplierStorePage, meta: { role: 'consumer' } },
       { path: 'keranjang', name: 'Cart', component: CartPage, meta: { role: 'consumer' } },
       { path: 'checkout', name: 'Checkout', component: CheckoutPage, meta: { role: 'consumer' } },
+      { path: 'pembayaran', name: 'PaymentResult', component: PaymentResultPage, meta: { role: 'consumer' } },
       { path: 'pesanan', name: 'Orders', component: OrdersPage, meta: { role: 'consumer' } },
       { path: 'pesanan/:id', name: 'OrderStatus', component: OrderStatusPage, meta: { role: 'consumer' } },
       { path: 'ulasan/:id', name: 'Review', component: ReviewPage, meta: { role: 'consumer' } },
       { path: 'profil', name: 'Profile', component: ProfilePage, meta: { role: 'consumer' } },
+      // Address routes
+      { path: 'alamat', name: 'AddressList', component: AddressListPage, meta: { role: 'consumer' } },
+      { path: 'alamat/baru', name: 'AddressNew', component: AddressFormPage, meta: { role: 'consumer' } },
+      { path: 'alamat/:id/ubah', name: 'AddressEdit', component: AddressFormPage, meta: { role: 'consumer' } },
     ]
   },
 
@@ -98,7 +108,7 @@ const routes = [
     ]
   },
 
-  // Alias alamat umum
+  // Alias
   { path: '/login', redirect: '/masuk' },
   { path: '/register', redirect: '/daftar' },
   { path: '/terms', redirect: '/syarat-ketentuan' },

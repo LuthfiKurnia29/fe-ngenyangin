@@ -1,6 +1,7 @@
 <script setup>
 import UserAvatar from '@/components/base/UserAvatar.vue'
-import { ref } from 'vue'
+import Logo from '@/components/base/Logo.vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
@@ -12,6 +13,7 @@ const cart = useCartStore()
 
 const mobileMenuOpen = ref(false)
 const profileOpen = ref(false)
+const dropdownRef = ref(null)
 
 function logout() {
   auth.logout()
@@ -25,29 +27,90 @@ function goHome() {
   } else {
     router.push('/')
   }
+  mobileMenuOpen.value = false
 }
+
+function closeDropdown() {
+  profileOpen.value = false
+}
+
+// Close dropdown when clicking outside
+function handleOutsideClick(e) {
+  if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
+    profileOpen.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', handleOutsideClick, true))
+onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick, true))
 </script>
 
 <template>
   <header class="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-border shadow-sm">
-    <div class="section-container h-16 flex items-center justify-between gap-4">
+    <div class="section-container h-16 md:h-20 flex items-center justify-between gap-4">
       <!-- Logo -->
       <button @click="goHome" class="flex-shrink-0" aria-label="Beranda NGENYANGIN">
-        <img src="@/assets/ngenyangin.svg" alt="NGENYANGIN" class="h-8 w-auto min-w-[120px]" />
+        <Logo height="h-9 md:h-12" />
       </button>
 
-      <!-- Nav links (desktop, consumer only) -->
-      <nav v-if="auth.role === 'consumer'" class="hidden md:flex items-center gap-1">
-        <RouterLink
-          to="/jelajah"
-          class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
-          active-class="text-primary bg-primary-soft font-semibold"
-        >Jelajah</RouterLink>
-        <RouterLink
-          to="/pesanan"
-          class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
-          active-class="text-primary bg-primary-soft font-semibold"
-        >Pesanan Saya</RouterLink>
+      <!-- Nav links (desktop) -->
+      <nav class="hidden md:flex items-center gap-1 flex-1 justify-center">
+        <!-- Consumer nav -->
+        <template v-if="auth.role === 'consumer'">
+          <RouterLink
+            to="/jelajah"
+            class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
+            active-class="text-primary bg-primary-soft font-semibold"
+          >Jelajah</RouterLink>
+          <RouterLink
+            to="/pesanan"
+            class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
+            active-class="text-primary bg-primary-soft font-semibold"
+          >Pesanan Saya</RouterLink>
+        </template>
+
+        <!-- Supplier nav -->
+        <template v-if="auth.role === 'supplier'">
+          <RouterLink
+            to="/supplier/tambah"
+            class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
+            active-class="text-primary bg-primary-soft font-semibold"
+          >Tambah Makanan</RouterLink>
+          <RouterLink
+            to="/supplier/pesanan"
+            class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
+            active-class="text-primary bg-primary-soft font-semibold"
+          >Pesanan Masuk</RouterLink>
+          <RouterLink
+            to="/supplier/profil"
+            class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
+            active-class="text-primary bg-primary-soft font-semibold"
+          >Profil Toko</RouterLink>
+        </template>
+
+        <!-- Admin nav -->
+        <template v-if="auth.role === 'admin'">
+          <RouterLink
+            to="/admin/pengaduan"
+            class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
+            active-class="text-primary bg-primary-soft font-semibold"
+          >Pengaduan</RouterLink>
+          <RouterLink
+            to="/admin/bantuan"
+            class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
+            active-class="text-primary bg-primary-soft font-semibold"
+          >Bantuan</RouterLink>
+          <RouterLink
+            to="/admin/syarat"
+            class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
+            active-class="text-primary bg-primary-soft font-semibold"
+          >Syarat & Ketentuan</RouterLink>
+          <RouterLink
+            to="/admin/pengaturan"
+            class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
+            active-class="text-primary bg-primary-soft font-semibold"
+          >Pengaturan</RouterLink>
+        </template>
       </nav>
 
       <!-- Right section -->
@@ -79,7 +142,7 @@ function goHome() {
         </template>
 
         <!-- User Profile -->
-        <div v-else class="relative">
+        <div v-else class="relative" ref="dropdownRef">
           <button
             @click="profileOpen = !profileOpen"
             class="flex items-center gap-2 p-1.5 rounded-full hover:bg-primary-soft transition-colors"
@@ -96,7 +159,6 @@ function goHome() {
           <div
             v-if="profileOpen"
             class="absolute right-0 top-full mt-2 w-52 bg-surface rounded-md shadow-modal border border-border animate-fade-in py-1"
-            @click.outside="profileOpen = false"
           >
             <div class="px-4 py-2.5 border-b border-border">
               <p class="text-sm font-semibold text-text-primary">{{ auth.userName }}</p>
@@ -105,13 +167,24 @@ function goHome() {
             <RouterLink
               v-if="auth.role === 'consumer'"
               to="/profil"
-              @click="profileOpen = false"
+              @click="closeDropdown"
               class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-primary hover:bg-primary-soft transition-colors"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
               </svg>
               Edit Profil
+            </RouterLink>
+            <RouterLink
+              v-if="auth.role === 'supplier'"
+              to="/supplier/profil"
+              @click="closeDropdown"
+              class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-primary hover:bg-primary-soft transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
+              Profil Toko
             </RouterLink>
             <button
               @click="logout"
@@ -146,6 +219,17 @@ function goHome() {
           <RouterLink to="/jelajah" class="sidebar-link" @click="mobileMenuOpen = false">Jelajah Makanan</RouterLink>
           <RouterLink to="/pesanan" class="sidebar-link" @click="mobileMenuOpen = false">Pesanan Saya</RouterLink>
           <RouterLink to="/profil" class="sidebar-link" @click="mobileMenuOpen = false">Edit Profil</RouterLink>
+        </template>
+        <template v-if="auth.role === 'supplier'">
+          <RouterLink to="/supplier/tambah" class="sidebar-link" @click="mobileMenuOpen = false">Tambah Makanan</RouterLink>
+          <RouterLink to="/supplier/pesanan" class="sidebar-link" @click="mobileMenuOpen = false">Pesanan Masuk</RouterLink>
+          <RouterLink to="/supplier/profil" class="sidebar-link" @click="mobileMenuOpen = false">Profil Toko</RouterLink>
+        </template>
+        <template v-if="auth.role === 'admin'">
+          <RouterLink to="/admin/pengaduan" class="sidebar-link" @click="mobileMenuOpen = false">Pengaduan</RouterLink>
+          <RouterLink to="/admin/bantuan" class="sidebar-link" @click="mobileMenuOpen = false">Bantuan</RouterLink>
+          <RouterLink to="/admin/syarat" class="sidebar-link" @click="mobileMenuOpen = false">Syarat & Ketentuan</RouterLink>
+          <RouterLink to="/admin/pengaturan" class="sidebar-link" @click="mobileMenuOpen = false">Pengaturan</RouterLink>
         </template>
         <template v-if="!auth.isLoggedIn">
           <RouterLink to="/masuk" class="sidebar-link" @click="mobileMenuOpen = false">Masuk</RouterLink>

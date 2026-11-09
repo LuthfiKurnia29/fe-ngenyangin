@@ -1,3 +1,8 @@
+<script setup>
+import { RouterLink } from 'vue-router'
+import Logo from '@/components/base/Logo.vue'
+</script>
+
 <template>
   <footer class="bg-primary-dark text-white">
     <div class="section-container py-12">
@@ -5,7 +10,8 @@
         <!-- Brand column -->
         <div class="md:col-span-1">
           <div class="inline-flex items-center px-4 py-2 bg-white/10 rounded-md mb-4">
-            <img src="@/assets/ngenyangin.svg" alt="NGENYANGIN" class="h-7 w-auto" />
+            <!-- Logo versi kontras untuk latar gelap: filter invert putih -->
+            <Logo height="h-10" variant="light" />
           </div>
           <p class="text-sm text-white/70 leading-relaxed">
             Selamatkan makanan surplus UMKM kuliner. Hemat lebih banyak, kurangi pemborosan pangan.
