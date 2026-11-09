@@ -11,8 +11,26 @@ export const useCartStore = defineStore('cart', () => {
   const itemCount = computed(() => items.value.reduce((sum, i) => sum + i.quantity, 0))
   const subtotal = computed(() => items.value.reduce((sum, i) => sum + i.discountPrice * i.quantity, 0))
 
-  function addItem(food, quantity = 1) {
-    const existing = items.value.find(i => i.foodId === food.id)
+  const currentSupplierId = computed(() => items.value[0]?.supplierId ?? null)
+  const currentSupplierName = computed(() => items.value[0]?.supplierName ?? '')
+
+  function addItem(food, quantity = 1, force = false) {
+    // Validasi pembatasan 1 supplier per checkout
+    if (items.value.length > 0 && currentSupplierId.value && food.supplierId) {
+      if (String(currentSupplierId.value) !== String(food.supplierId)) {
+        if (!force) {
+          return {
+            conflict: true,
+            currentSupplierName: currentSupplierName.value || 'toko lain',
+            newSupplierName: food.supplierName || 'toko baru',
+          }
+        }
+        // Jika force = true, kosongkan keranjang dari toko sebelumnya
+        items.value = []
+      }
+    }
+
+    const existing = items.value.find(i => String(i.foodId) === String(food.id))
     if (existing) {
       existing.quantity += quantity
     } else {
@@ -31,16 +49,17 @@ export const useCartStore = defineStore('cart', () => {
       })
     }
     persist()
+    return { success: true }
   }
 
   function removeItem(foodId) {
-    const idx = items.value.findIndex(i => i.foodId === foodId)
+    const idx = items.value.findIndex(i => String(i.foodId) === String(foodId))
     if (idx !== -1) items.value.splice(idx, 1)
     persist()
   }
 
   function updateQuantity(foodId, quantity) {
-    const item = items.value.find(i => i.foodId === foodId)
+    const item = items.value.find(i => String(i.foodId) === String(foodId))
     if (item) {
       if (quantity <= 0) removeItem(foodId)
       else item.quantity = quantity
@@ -53,5 +72,15 @@ export const useCartStore = defineStore('cart', () => {
     persist()
   }
 
-  return { items, itemCount, subtotal, addItem, removeItem, updateQuantity, clear }
+  return {
+    items,
+    itemCount,
+    subtotal,
+    currentSupplierId,
+    currentSupplierName,
+    addItem,
+    removeItem,
+    updateQuantity,
+    clear,
+  }
 })

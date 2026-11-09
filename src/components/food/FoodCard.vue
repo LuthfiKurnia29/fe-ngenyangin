@@ -42,7 +42,17 @@ function addToCart(e) {
     router.push({ name: 'Login' })
     return
   }
-  cart.addItem(props.food)
+  const result = cart.addItem(props.food)
+  if (result?.conflict) {
+    const confirmSwitch = window.confirm(
+      `Keranjang belanja Anda sudah berisi makanan dari "${result.currentSupplierName}".\n\nSetiap pesanan dibatasi 1 toko per transaksi. Apakah Anda ingin mengosongkan keranjang dan menggantinya dengan pesanan dari "${result.newSupplierName}"?`
+    )
+    if (confirmSwitch) {
+      cart.addItem(props.food, 1, true)
+      notify.success(`${props.food.name} ditambahkan ke keranjang!`)
+    }
+    return
+  }
   notify.success(`${props.food.name} ditambahkan ke keranjang!`)
 }
 </script>

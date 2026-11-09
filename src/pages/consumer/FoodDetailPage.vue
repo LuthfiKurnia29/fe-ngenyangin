@@ -27,7 +27,17 @@ function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
 
 function addToCart() {
   if (!food.value) return
-  cart.addItem(food.value, qty.value)
+  const result = cart.addItem(food.value, qty.value)
+  if (result?.conflict) {
+    const confirmSwitch = window.confirm(
+      `Keranjang belanja Anda sudah berisi makanan dari "${result.currentSupplierName}".\n\nSetiap pesanan dibatasi 1 toko per transaksi. Apakah Anda ingin mengosongkan keranjang dan menggantinya dengan pesanan dari "${result.newSupplierName}"?`
+    )
+    if (confirmSwitch) {
+      cart.addItem(food.value, qty.value, true)
+      notify.success(`${food.value.name} (${qty.value}x) ditambahkan ke keranjang!`)
+    }
+    return
+  }
   notify.success(`${food.value.name} (${qty.value}x) ditambahkan ke keranjang!`)
 }
 

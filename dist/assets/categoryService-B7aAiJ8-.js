@@ -1,1 +1,0 @@
-import{E as e}from"./index-C2oB7Pvf.js";const o="/categories",s=t=>{var a;return((a=t.data)==null?void 0:a.data)??t.data},n={async getAll(t={}){const a=await e.get(o,{params:t}),c=s(a);return c.items??c}};export{n as c};

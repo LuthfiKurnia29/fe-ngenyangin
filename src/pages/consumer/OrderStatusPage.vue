@@ -2,25 +2,45 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { orderService } from '@/services/orderService'
+import { paymentService } from '@/services/paymentService'
+import { useNotificationStore } from '@/stores/notifications'
 import OrderTimeline from '@/components/order/OrderTimeline.vue'
 import StatusBadge from '@/components/order/StatusBadge.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 
 const route = useRoute()
 const router = useRouter()
+const notify = useNotificationStore()
 const order = ref(null)
 const isLoading = ref(true)
+const isCheckingStatus = ref(false)
+const isPaying = ref(false)
 
-onMounted(async () => {
-  try { order.value = await orderService.getById(route.params.id) }
-  catch { order.value = null }
-  finally { isLoading.value = false }
-})
+async function loadOrder() {
+  try {
+    order.value = await orderService.getById(route.params.id)
+  } catch {
+    order.value = null
+  } finally {
+    isLoading.value = false
+  }
+}
 
-function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
+onMounted(loadOrder)
+
+function formatPrice(p) {
+  return 'Rp ' + Number(p || 0).toLocaleString('id-ID')
+}
+
 function formatDate(d) {
   if (!d) return '-'
-  return new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(d).toLocaleString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 function paymentBadgeClass(status) {
@@ -32,6 +52,52 @@ function paymentBadgeClass(status) {
   }
   return map[status] || 'bg-gray-100 text-gray-600'
 }
+
+async function handleCheckPayment() {
+  if (!order.value?.id) return
+  isCheckingStatus.value = true
+  try {
+    const updated = await orderService.checkStatus(order.value.id)
+    if (updated) {
+      order.value = updated
+      notify.success(`Status pembayaran diperbarui: ${updated.status}`)
+    } else {
+      notify.info('Status pembayaran belum berubah dari Midtrans.')
+    }
+  } catch (e) {
+    notify.error('Gagal memeriksa status pembayaran Midtrans')
+  } finally {
+    isCheckingStatus.value = false
+  }
+}
+
+async function handlePayNow() {
+  if (!order.value) return
+  isPaying.value = true
+  try {
+    const snapToken = order.value.snapToken || order.value.snap_token
+    if (snapToken) {
+      const { status } = await paymentService.payWithSnap(snapToken)
+      if (status === 'success') {
+        notify.success('Pembayaran berhasil dikonfirmasi!')
+        await handleCheckPayment()
+      } else if (status === 'pending') {
+        notify.info('Menunggu verifikasi pembayaran...')
+        await handleCheckPayment()
+      } else if (status === 'closed') {
+        notify.info('Popup pembayaran ditutup')
+      }
+    } else if (order.value.paymentUrl || order.value.payment_url) {
+      window.open(order.value.paymentUrl || order.value.payment_url, '_blank')
+    } else {
+      notify.error('Link pembayaran tidak tersedia')
+    }
+  } catch (err) {
+    notify.error(err.message || 'Gagal membuka pembayaran')
+  } finally {
+    isPaying.value = false
+  }
+}
 </script>
 
 <template>
@@ -42,8 +108,14 @@ function paymentBadgeClass(status) {
         Pesanan Saya
       </button>
 
-      <div v-if="isLoading" class="animate-pulse space-y-4"><div class="h-32 bg-border/30 rounded-lg"></div><div class="h-48 bg-border/30 rounded-lg"></div></div>
-      <div v-else-if="!order" class="text-center py-16"><p class="text-4xl mb-3">😢</p><p class="font-semibold">Pesanan tidak ditemukan</p></div>
+      <div v-if="isLoading" class="animate-pulse space-y-4">
+        <div class="h-32 bg-border/30 rounded-lg"></div>
+        <div class="h-48 bg-border/30 rounded-lg"></div>
+      </div>
+      <div v-else-if="!order" class="text-center py-16">
+        <p class="text-4xl mb-3">😢</p>
+        <p class="font-semibold">Pesanan tidak ditemukan</p>
+      </div>
 
       <div v-else class="space-y-6">
         <!-- Header -->
@@ -78,25 +150,55 @@ function paymentBadgeClass(status) {
           </div>
         </div>
 
+        <!-- Banner Menunggu Pembayaran & Action Buttons -->
+        <div v-if="order.status === 'Menunggu'" class="bg-yellow-50 border border-yellow-200 rounded-md p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-2xl">⏳</span>
+            <div>
+              <p class="font-semibold text-sm text-yellow-900">Menunggu Pembayaran Midtrans</p>
+              <p class="text-xs text-yellow-700">Selesaikan transaksi Anda melalui Midtrans atau periksa statusnya jika Anda sudah membayar.</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-3 mt-4">
+            <BaseButton
+              v-if="order.snapToken || order.paymentUrl"
+              variant="primary"
+              size="sm"
+              :loading="isPaying"
+              @click="handlePayNow"
+            >
+              Lanjutkan Pembayaran
+            </BaseButton>
+            <BaseButton
+              variant="outline"
+              size="sm"
+              :loading="isCheckingStatus"
+              @click="handleCheckPayment"
+            >
+              🔄 Cek Status Pembayaran
+            </BaseButton>
+          </div>
+        </div>
+
         <!-- Info Pembayaran -->
-        <div v-if="order.paymentStatus || order.transactionId || order.paymentTime" class="bg-surface rounded-md border border-border p-5">
+        <div v-if="order.paymentStatus || order.orderNumber" class="bg-surface rounded-md border border-border p-5">
           <h2 class="font-semibold text-sm text-text-primary mb-3">Informasi Pembayaran</h2>
           <div class="space-y-2 text-sm">
-            <div v-if="order.paymentStatus" class="flex justify-between">
+            <div class="flex justify-between">
               <span class="text-text-secondary">Status Pembayaran</span>
               <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', paymentBadgeClass(order.paymentStatus)]">{{ order.paymentStatus }}</span>
             </div>
-            <div v-if="order.paymentMethod" class="flex justify-between">
-              <span class="text-text-secondary">Metode Pembayaran</span>
-              <span class="font-medium text-text-primary capitalize">{{ order.paymentMethod }}</span>
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Nomor Pesanan</span>
+              <span class="font-mono text-xs text-text-primary">{{ order.orderNumber }}</span>
             </div>
-            <div v-if="order.paymentTime" class="flex justify-between">
-              <span class="text-text-secondary">Waktu Pembayaran</span>
-              <span class="font-medium text-text-primary">{{ formatDate(order.paymentTime) }}</span>
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Waktu Pemesanan</span>
+              <span class="font-medium text-text-primary">{{ formatDate(order.createdAt) }}</span>
             </div>
-            <div v-if="order.transactionId" class="flex justify-between">
-              <span class="text-text-secondary">ID Transaksi</span>
-              <span class="font-mono text-xs text-text-primary">{{ order.transactionId }}</span>
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Metode Pengiriman</span>
+              <span class="font-medium text-text-primary capitalize">{{ order.deliveryMethod === 'courier' ? 'Kurir Pengantaran' : 'Ambil Sendiri di Outlet' }}</span>
             </div>
           </div>
         </div>
@@ -110,8 +212,6 @@ function paymentBadgeClass(status) {
         <!-- Delivery address (courier) -->
         <div v-if="order.deliveryMethod === 'courier' && order.deliveryAddress" class="bg-surface rounded-md border border-border p-5">
           <h2 class="font-semibold text-sm text-text-primary mb-2">Alamat Pengantaran</h2>
-          <p v-if="order.recipientName" class="text-sm font-medium text-text-primary">{{ order.recipientName }}</p>
-          <p v-if="order.recipientPhone" class="text-xs text-text-secondary">{{ order.recipientPhone }}</p>
           <p class="text-sm text-text-secondary mt-1">{{ order.deliveryAddress }}</p>
           <p v-if="order.specialNote" class="text-sm text-text-secondary mt-2 italic border-t border-border pt-2">
             "{{ order.specialNote }}"
@@ -119,9 +219,9 @@ function paymentBadgeClass(status) {
         </div>
 
         <!-- Bayar ulang jika gagal -->
-        <div v-if="order.paymentStatus === 'Gagal' || order.paymentStatus === 'Dibatalkan'" class="bg-red-50 rounded-md p-5 text-center border border-red-200">
-          <p class="text-sm font-medium text-error mb-3">Pembayaran {{ order.paymentStatus.toLowerCase() }}. Lakukan pembayaran ulang.</p>
-          <BaseButton variant="primary" @click="router.push('/checkout')">Bayar Ulang</BaseButton>
+        <div v-if="order.status === 'Dibatalkan'" class="bg-red-50 rounded-md p-5 text-center border border-red-200">
+          <p class="text-sm font-medium text-error mb-3">Pesanan ini telah dibatalkan.</p>
+          <BaseButton variant="primary" @click="router.push('/jelajah')">Jelajahi Makanan Lain</BaseButton>
         </div>
 
         <!-- Review CTA -->

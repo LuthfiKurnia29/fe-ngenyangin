@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 50" fill="none">
-  <text x="5" y="36" font-family="'Poppins', sans-serif" font-weight="700" font-size="32" fill="#D24F0F" letter-spacing="-0.5">ngenyangin</text>
-  <circle cx="237" cy="10" r="2" fill="#D24F0F"/>
-  <line x1="238" y1="8" x2="242" y2="5" stroke="#D24F0F" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="240" y1="10" x2="244" y2="8" stroke="#D24F0F" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M5 42 Q60 50 130 42 Q200 34 255 42" stroke="#046838" stroke-width="3" fill="none" stroke-linecap="round"/>
-</svg>

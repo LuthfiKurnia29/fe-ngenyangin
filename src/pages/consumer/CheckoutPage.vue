@@ -22,10 +22,13 @@ const deliveryMethod = ref('pickup')
 const specialNote = ref('')
 const isSubmitting = ref(false)
 
-// Metode pembayaran yang dipilih pengguna (opsional — Snap yang menangani detail)
-const selectedPaymentLabel = ref('Pilih Metode Pembayaran')
+// Opsi pembayaran Midtrans
 const paymentOptions = [
-  { id: 'snap', label: 'Semua Metode (via Midtrans)', desc: 'Transfer Bank/VA, GoPay, ShopeePay, QRIS, Kartu Kredit/Debit' },
+  {
+    id: 'snap',
+    label: 'Semua Metode Pembayaran (Midtrans Snap)',
+    desc: 'QRIS (GoPay, ShopeePay, OVO), Virtual Account BCA/BNI/BRI/Mandiri, Kartu Kredit/Debit'
+  },
 ]
 const selectedPayment = ref('snap')
 
@@ -40,9 +43,23 @@ const canPlaceOrder = computed(() => {
   return cart.items.length > 0
 })
 
-function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
+function formatPrice(p) {
+  return 'Rp ' + Number(p || 0).toLocaleString('id-ID')
+}
 
 async function handlePayNow() {
+  if (cart.items.length === 0) {
+    notify.error('Keranjang belanja kosong')
+    return
+  }
+
+  // Validasi: 1 pesanan dibatasi dari 1 supplier
+  const uniqueSuppliers = new Set(cart.items.map(i => i.supplierId).filter(Boolean))
+  if (uniqueSuppliers.size > 1) {
+    notify.error('Keranjang hanya boleh berisi produk dari satu toko. Silakan sesuaikan isi keranjang Anda.')
+    return
+  }
+
   if (deliveryMethod.value === 'courier' && !deliveryAddress.value) {
     notify.error('Tambahkan alamat pengantaran di profil terlebih dahulu')
     router.push('/alamat/baru?from=checkout')
@@ -51,84 +68,109 @@ async function handlePayNow() {
 
   isSubmitting.value = true
   try {
-    // Siapkan payload untuk Midtrans
+    const formattedAddress = deliveryAddress.value
+      ? `${deliveryAddress.value.streetDetail || ''}, ${deliveryAddress.value.district || ''}, ${deliveryAddress.value.city || ''}, ${deliveryAddress.value.province || ''} ${deliveryAddress.value.postalCode || ''}`.trim().replace(/^,\s*|,\s*$/g, '')
+      : ''
+
+    // 1. Siapkan payload order sesuai kontrak API backend Express POST /purchase
     const orderPayload = {
-      orderId: 'ORD-' + Date.now(),
-      amount: total.value,
-      customerDetails: {
-        first_name: auth.userName,
-        email: auth.user?.email || '',
-        phone: auth.user?.phone || '',
-      },
       items: cart.items.map(item => ({
-        id: item.foodId,
-        price: item.discountPrice,
+        productId: item.foodId,
         quantity: item.quantity,
-        name: item.name,
       })),
+      delivery_method: deliveryMethod.value,
+      delivery_address: deliveryMethod.value === 'courier' ? formattedAddress : '',
+      delivery_fee: deliveryFee.value,
+      special_note: specialNote.value || '',
     }
 
-    // Tampilkan Snap Midtrans (mock)
-    notify.success('Membuka halaman pembayaran...')
-    const { status, result, transaction } = await paymentService.initiatePayment(orderPayload)
+    // 2. Buat order di backend (sekaligus generate Snap Token di Midtrans)
+    notify.info('Membuat pesanan & menyiapkan pembayaran Midtrans...')
+    const newOrder = await orders.placeOrder(orderPayload)
 
-    if (status === 'closed') {
-      notify.error('Pembayaran dibatalkan')
-      isSubmitting.value = false
-      return
+    if (!newOrder) {
+      throw new Error('Gagal mendapatkan data pesanan dari server')
     }
 
-    // Tentukan status pembayaran
-    const paymentStatusMap = { success: 'Lunas', pending: 'Menunggu Pembayaran', failed: 'Gagal', closed: 'Dibatalkan' }
-    const paymentStatus = paymentStatusMap[status] || 'Gagal'
+    const snapToken = newOrder.snapToken || newOrder.snap_token
 
-    // Buat pesanan untuk setiap item
-    const createdOrders = []
-    for (const item of cart.items) {
-      const newOrder = await orders.placeOrder({
-        consumerId: auth.user.id,
-        consumerName: auth.userName,
-        consumerPhone: auth.user.phone || '',
-        supplierId: item.supplierId,
-        supplierName: item.supplierName,
-        foodId: item.foodId,
-        foodName: item.name,
-        foodImage: item.image,
-        quantity: item.quantity,
-        originalPrice: item.originalPrice,
-        discountPrice: item.discountPrice,
-        deliveryMethod: deliveryMethod.value,
-        deliveryAddress: deliveryMethod.value === 'courier'
-          ? `${deliveryAddress.value?.streetDetail}, ${deliveryAddress.value?.district}, ${deliveryAddress.value?.city}, ${deliveryAddress.value?.province}`
-          : null,
-        recipientName: deliveryMethod.value === 'courier' ? deliveryAddress.value?.recipientName : null,
-        recipientPhone: deliveryMethod.value === 'courier' ? deliveryAddress.value?.phone : null,
-        specialNote: specialNote.value || null,
-        deliveryFee: deliveryFee.value,
-        total: item.discountPrice * item.quantity + deliveryFee.value,
-        // --- Data pembayaran ---
-        paymentStatus,
-        paymentMethod: result?.payment_type || selectedPayment.value,
-        paymentTime: result?.transaction_time || null,
-        transactionId: result?.transaction_id || transaction?.token || null,
-      })
-      createdOrders.push(newOrder)
-    }
+    // 3. Jika Snap Token berhasil didapat, luncurkan Midtrans Snap Popup
+    if (snapToken) {
+      try {
+        const { status, result } = await paymentService.payWithSnap(snapToken)
 
-    cart.clear()
+        if (status === 'success') {
+          // Sinkronkan status pembayaran terkini ke backend
+          try {
+            await orders.checkStatus(newOrder.id)
+          } catch (_) {}
 
-    // Arahkan ke halaman konfirmasi pembayaran
-    router.push({
-      name: 'PaymentResult',
-      query: {
-        status,
-        orderId: createdOrders[0]?.id || '',
-        transactionId: result?.transaction_id || '',
+          cart.clear()
+          notify.success('Pembayaran berhasil!')
+          router.push({
+            name: 'PaymentResult',
+            query: {
+              status: 'success',
+              orderId: newOrder.id,
+              transactionId: result?.transaction_id || '',
+            }
+          })
+          return
+        } else if (status === 'pending') {
+          try {
+            await orders.checkStatus(newOrder.id)
+          } catch (_) {}
+
+          cart.clear()
+          notify.info('Menunggu penyelesaian pembayaran...')
+          router.push({
+            name: 'PaymentResult',
+            query: {
+              status: 'pending',
+              orderId: newOrder.id,
+              transactionId: result?.transaction_id || '',
+            }
+          })
+          return
+        } else if (status === 'closed') {
+          cart.clear()
+          notify.info('Popup pembayaran ditutup. Anda dapat melanjutkan pembayaran nanti dari menu Pesanan.')
+          router.push(`/pesanan/${newOrder.id}`)
+          return
+        } else {
+          notify.error('Pembayaran tidak berhasil diselesaikan')
+          router.push({
+            name: 'PaymentResult',
+            query: {
+              status: 'failed',
+              orderId: newOrder.id,
+              transactionId: result?.transaction_id || '',
+            }
+          })
+          return
+        }
+      } catch (snapErr) {
+        console.warn('Gagal membuka Snap Popup:', snapErr)
+        // Fallback: Jika popup diblokir browser atau Snap.js error, buka payment_url Midtrans jika tersedia
+        if (newOrder.paymentUrl || newOrder.payment_url) {
+          cart.clear()
+          window.location.href = newOrder.paymentUrl || newOrder.payment_url
+          return
+        }
+        throw snapErr
       }
-    })
+    } else if (newOrder.paymentUrl || newOrder.payment_url) {
+      // Fallback jika backend hanya mengembalikan payment URL
+      cart.clear()
+      window.location.href = newOrder.paymentUrl || newOrder.payment_url
+    } else {
+      // Pesanan berhasil dibuat tanpa snap token
+      cart.clear()
+      router.push(`/pesanan/${newOrder.id}`)
+    }
   } catch (e) {
-    console.error(e)
-    notify.error('Gagal memproses pembayaran')
+    console.error('Error saat checkout:', e)
+    notify.error(e.message || 'Gagal memproses pembayaran')
   } finally {
     isSubmitting.value = false
   }
@@ -152,6 +194,17 @@ async function handlePayNow() {
       </div>
 
       <div v-else class="space-y-6">
+        <!-- Informasi Toko/Supplier -->
+        <div v-if="cart.currentSupplierName" class="bg-primary-soft/50 border border-primary/20 rounded-md p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs text-text-secondary">Pesanan dari Outlet:</p>
+            <p class="font-semibold text-sm text-primary-dark">{{ cart.currentSupplierName }}</p>
+          </div>
+          <span class="text-xs text-text-secondary bg-white px-2.5 py-1 rounded-full border border-border">
+            1 Toko per Checkout
+          </span>
+        </div>
+
         <!-- Items summary -->
         <div class="bg-surface rounded-md border border-border p-5">
           <h2 class="font-semibold text-sm text-text-primary mb-3">Ringkasan Pesanan</h2>
@@ -250,7 +303,7 @@ async function handlePayNow() {
           </div>
           <p class="text-xs text-text-secondary mt-3 flex items-center gap-1">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-            Pembayaran diproses aman oleh Midtrans
+            Pembayaran diproses secara aman melalui Midtrans Payment Gateway
           </p>
         </div>
 

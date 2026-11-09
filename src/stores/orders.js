@@ -51,11 +51,30 @@ export const useOrdersStore = defineStore('orders', () => {
     return updated
   }
 
+  async function checkStatus(orderId) {
+    const updated = await orderService.checkStatus(orderId)
+    if (updated) {
+      const idx = orders.value.findIndex(o => o.id === orderId)
+      if (idx !== -1) orders.value[idx] = updated
+    }
+    return updated
+  }
+
   async function addReview(orderId, review) {
     const updated = await orderService.addReview(orderId, review)
     const idx = orders.value.findIndex(o => o.id === orderId)
     if (idx !== -1) orders.value[idx] = { ...orders.value[idx], review: updated }
   }
 
-  return { orders, isLoading, fetchOrders, fetchSupplierOrders, fetchAllOrders, placeOrder, updateStatus, addReview }
+  return {
+    orders,
+    isLoading,
+    fetchOrders,
+    fetchSupplierOrders,
+    fetchAllOrders,
+    placeOrder,
+    updateStatus,
+    checkStatus,
+    addReview,
+  }
 })

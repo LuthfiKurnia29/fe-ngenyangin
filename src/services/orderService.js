@@ -1,208 +1,231 @@
-import ordersData from '@/data/orders.json'
+import api from './api'
 
-const STORAGE_KEY = 'ngenyangin_orders'
-const delay = (ms = 150) => new Promise(resolve => setTimeout(resolve, ms))
+const delay = (ms = 100) => new Promise(resolve => setTimeout(resolve, ms))
 
-function getInitialOrders() {
+/**
+ * Format timestamp ke string waktu lokal
+ */
+function formatTime(isoString) {
+  if (!isoString) return ''
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
-  } catch (e) {
-    console.error('Failed to parse orders from localStorage:', e)
+    return new Date(isoString).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+  } catch {
+    return ''
   }
-  // Fallback to seeded orders
-  const initial = [...ordersData]
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initial))
-  } catch (_) {}
-  return initial
 }
 
-let _orders = getInitialOrders()
+/**
+ * Normalisasi data pesanan dari API backend Supabase ke format yang dikonsumsi oleh komponen frontend.
+ */
+export function mapPurchase(p) {
+  if (!p) return null
 
-function saveOrders(orders) {
-  _orders = [...orders]
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(_orders))
-  } catch (e) {
-    console.error('Failed to save orders to localStorage:', e)
+  const details = p.detail_purchases || p.items || []
+  const firstItem = details[0] || {}
+
+  // Hitung total kuantitas dari item details jika ada
+  const totalQty = details.reduce((sum, item) => sum + Number(item.quantity || 1), 0) || Number(p.quantity || 1)
+
+  // Mapping status pembayaran berdasarkan status pesanan
+  let paymentStatus = 'Menunggu Pembayaran'
+  if (p.status === 'Diproses' || p.status === 'Siap Diambil' || p.status === 'Dalam Pengantaran' || p.status === 'Selesai') {
+    paymentStatus = 'Lunas'
+  } else if (p.status === 'Dibatalkan') {
+    paymentStatus = 'Dibatalkan'
+  }
+
+  // Bangun timeline untuk komponen OrderTimeline.vue
+  const statusStepMap = {
+    'Menunggu': 0,
+    'Diproses': 1,
+    'Siap Diambil': 2,
+    'Dalam Pengantaran': 2,
+    'Selesai': 3,
+    'Dibatalkan': -1,
+  }
+  const currentStep = statusStepMap[p.status] ?? 0
+
+  const timelineSteps = [
+    {
+      step: 'Pesanan Dibuat',
+      time: formatTime(p.created_at || p.createdAt),
+      status: currentStep >= 0 ? 'completed' : 'pending',
+    },
+    {
+      step: 'Diproses Supplier',
+      time: currentStep >= 1 ? formatTime(p.updated_at || p.updatedAt) : null,
+      status: currentStep > 1 ? 'completed' : currentStep === 1 ? 'active' : 'pending',
+    },
+    {
+      step: p.delivery_method === 'courier' ? 'Dalam Pengantaran' : 'Siap Diambil',
+      time: currentStep >= 2 ? formatTime(p.updated_at || p.updatedAt) : null,
+      status: currentStep > 2 ? 'completed' : currentStep === 2 ? 'active' : 'pending',
+    },
+    {
+      step: 'Selesai',
+      time: currentStep === 3 ? formatTime(p.updated_at || p.updatedAt) : null,
+      status: currentStep === 3 ? 'completed' : 'pending',
+    },
+  ]
+
+  if (p.status === 'Dibatalkan') {
+    timelineSteps.push({
+      step: 'Pesanan Dibatalkan',
+      time: formatTime(p.updated_at || p.updatedAt),
+      status: 'error',
+    })
+  }
+
+  return {
+    ...p,
+    id: p.id,
+    orderNumber: p.order_number || p.orderNumber || `ORD-${p.id}`,
+    status: p.status || 'Menunggu',
+    total: Number(p.total || 0),
+    deliveryMethod: p.delivery_method || p.deliveryMethod || 'pickup',
+    deliveryAddress: p.delivery_address || p.deliveryAddress || '',
+    deliveryFee: Number(p.delivery_fee || p.deliveryFee || 0),
+    specialNote: p.special_note || p.specialNote || '',
+    paymentStatus: p.paymentStatus || paymentStatus,
+    paymentUrl: p.payment_url || p.paymentUrl || null,
+    snapToken: p.snap_token || p.snapToken || null,
+    supplierId: p.supplier_id || p.supplierId || p.supplier?.id,
+    supplierName: p.supplier?.outlet || p.supplier?.name || p.supplierName || 'Supplier',
+    supplierPhone: p.supplier?.phone || '',
+    consumerId: p.consumer_id || p.consumerId || p.consumer?.id,
+    consumerName: p.consumer?.name || p.consumerName || '',
+    consumerPhone: p.consumer?.phone || '',
+    createdAt: p.created_at || p.createdAt || new Date().toISOString(),
+    updatedAt: p.updated_at || p.updatedAt || new Date().toISOString(),
+    items: details,
+    foodName: firstItem.food_name || firstItem.name || p.foodName || 'Pesanan Makanan',
+    foodImage: firstItem.food_image || firstItem.image || p.foodImage || '',
+    quantity: totalQty,
+    timeline: timelineSteps,
+    review: p.review_comment ? { rating: p.rating, comment: p.review_comment, createdAt: p.reviewed_at } : p.review || null,
   }
 }
 
 export const orderService = {
-  async getAll() {
-    await delay()
-    return [..._orders]
+  /**
+   * Membuat transaksi / purchase baru ke Backend API, lalu langsung
+   * request Snap Token Midtrans melalui POST /purchase/:id/pay.
+   * Backend menggunakan 2 langkah terpisah:
+   *   Step 1: POST /purchase        → simpan order ke DB (belum ada snap token)
+   *   Step 2: POST /purchase/:id/pay → generate Snap Token ke Midtrans
+   */
+  async create(orderPayload) {
+    // Step 1: Buat order di database
+    let orderData
+    try {
+      const res = await api.post('/purchase', orderPayload)
+      orderData = res.data?.data || res.data
+      if (!orderData?.id) throw new Error('Response tidak mengandung ID pesanan')
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Gagal membuat pesanan'
+      throw new Error(errorMsg)
+    }
+
+    // Step 2: Generate Snap Token Midtrans melalui endpoint /pay
+    try {
+      const payRes = await api.post(`/purchase/${orderData.id}/pay`)
+      const payData = payRes.data?.data || payRes.data
+      // Gabungkan: data order + snap_token & payment_url dari step 2
+      return mapPurchase({
+        ...orderData,
+        snap_token: payData?.snap_token || payData?.token,
+        payment_url: payData?.payment_url || payData?.redirect_url || orderData.payment_url,
+      })
+    } catch (err) {
+      // Jika step 2 gagal (misalnya Midtrans error), tetap kembalikan order
+      // agar user bisa mencoba bayar ulang dari halaman pesanan
+      console.warn('Gagal generate Snap Token:', err.response?.data?.message || err.message)
+      return mapPurchase(orderData)
+    }
   },
 
+  /**
+   * Mengambil semua pesanan (sesuai peran login) dari backend API
+   */
+  async getAll(params = {}) {
+    try {
+      const res = await api.get('/purchase', { params })
+      const rawList = res.data?.data?.data || res.data?.data || res.data || []
+      return (Array.isArray(rawList) ? rawList : []).map(mapPurchase)
+    } catch (err) {
+      console.warn('Gagal memuat pesanan dari backend API:', err)
+      return []
+    }
+  },
+
+  /**
+   * Mengambil detail pesanan berdasarkan ID
+   */
   async getById(id) {
-    await delay()
-    const order = _orders.find(o => String(o.id) === String(id))
-    if (!order) throw new Error('Pesanan tidak ditemukan')
-    return { ...order }
-  },
-
-  async getByConsumerId(consumerId, user = null) {
-    await delay()
-    const cId = String(consumerId || '').trim()
-    const uName = user?.name ? user.name.toLowerCase().trim() : ''
-    const uEmail = user?.email ? user.email.toLowerCase().trim() : ''
-
-    return _orders.filter(o => {
-      const orderConsumerId = String(o.consumerId || '').trim()
-
-      // Direct match
-      if (cId && (orderConsumerId === cId || orderConsumerId === `u${cId}` || `u${orderConsumerId}` === cId)) {
-        return true
-      }
-
-      // Demo consumer mapping (consumer@demo.id / Siti Rahayu / Budi Santoso)
-      if ((cId === '1' || cId === '3' || uEmail === 'konsumen@demo.id' || uEmail === 'consumer@demo.id') &&
-          (orderConsumerId === 'u1' || orderConsumerId === '1' || orderConsumerId === '3')) {
-        return true
-      }
-
-      // Name match fallback
-      if (uName && o.consumerName && o.consumerName.toLowerCase().trim() === uName) {
-        return true
-      }
-
-      return false
-    }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  },
-
-  async getBySupplierId(supplierId, user = null) {
-    await delay()
-    const sId = String(supplierId || '').trim()
-    const uOutlet = user?.outlet ? user.outlet.toLowerCase().trim() : ''
-    const uName = user?.name ? user.name.toLowerCase().trim() : ''
-    const uEmail = user?.email ? user.email.toLowerCase().trim() : ''
-
-    const matched = _orders.filter(o => {
-      const orderSupplierId = String(o.supplierId || '').trim()
-
-      // 1. Direct ID match (loose string comparison, supports "2" === "2" or "2" === "u2")
-      if (sId && (
-        orderSupplierId === sId ||
-        orderSupplierId === `u${sId}` ||
-        `u${orderSupplierId}` === sId
-      )) {
-        return true
-      }
-
-      // 2. Demo seed mapping for "supplier@demo.id" / Ahmad Fauzan / "Bebek Madura Bu Siti" (id 2 / u2)
-      const isDemoSiti = sId === '2' || sId === 'u2' || uEmail === 'supplier@demo.id' ||
-        (uOutlet && (uOutlet.includes('bebek') || uOutlet.includes('bu siti')))
-      if (isDemoSiti && (orderSupplierId === 'u2' || orderSupplierId === '2')) {
-        return true
-      }
-
-      // 3. Demo seed mapping for "artisan@demo.id" / Budi Santoso / "Artisan Bakehouse Senopati" (id 5 / u5)
-      const isDemoArtisan = sId === '5' || sId === 'u5' || uEmail === 'artisan@demo.id' ||
-        (uOutlet && uOutlet.includes('artisan'))
-      if (isDemoArtisan && (orderSupplierId === 'u5' || orderSupplierId === '5')) {
-        return true
-      }
-
-      // 4. Match by outlet name or supplier name (case-insensitive substring)
-      if (o.supplierName) {
-        const orderSupplierName = o.supplierName.toLowerCase().trim()
-        if (uOutlet && (orderSupplierName.includes(uOutlet) || uOutlet.includes(orderSupplierName))) {
-          return true
-        }
-        if (uName && (orderSupplierName.includes(uName) || uName.includes(orderSupplierName))) {
-          return true
-        }
-      }
-
-      return false
-    })
-
-    return matched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  },
-
-  async getByCourierId(courierId) {
-    await delay()
-    return _orders.filter(o => String(o.courierId) === String(courierId))
-  },
-
-  async create(orderData) {
-    await delay(300)
-    const newOrder = {
-      id: 'o' + Date.now(),
-      orderNumber: 'NGN-' + Math.floor(800000 + Math.random() * 99999),
-      status: 'Menunggu',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      timeline: [
-        { step: 'Pesanan Dibuat', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB', status: 'active' },
-        { step: 'Diproses Supplier', time: null, status: 'pending' },
-        { step: orderData.deliveryMethod === 'courier' ? 'Dalam Pengantaran' : 'Siap Diambil', time: null, status: 'pending' },
-        { step: 'Selesai', time: null, status: 'pending' }
-      ],
-      ...orderData
+    try {
+      const res = await api.get(`/purchase/${id}`)
+      const raw = res.data?.data || res.data
+      if (!raw) throw new Error('Pesanan tidak ditemukan')
+      return mapPurchase(raw)
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Pesanan tidak ditemukan'
+      throw new Error(errorMsg)
     }
-    _orders.unshift(newOrder)
-    saveOrders(_orders)
-    return newOrder
   },
 
+  /**
+   * Cek status transaksi langsung dari Midtrans & sinkronisasikan status DB
+   */
+  async checkStatus(id) {
+    try {
+      const res = await api.get(`/purchase/${id}/status`)
+      const raw = res.data?.data?.order || res.data?.data || res.data
+      return mapPurchase(raw)
+    } catch (err) {
+      console.warn('Gagal memeriksa status Midtrans:', err)
+      return null
+    }
+  },
+
+  /**
+   * Memperbarui status pesanan (misal oleh supplier: 'Diproses', 'Siap Diambil', dsb)
+   */
   async updateStatus(id, newStatus) {
-    await delay(200)
-    const idx = _orders.findIndex(o => String(o.id) === String(id))
-    if (idx === -1) throw new Error('Pesanan tidak ditemukan')
-
-    const order = { ..._orders[idx] }
-    order.status = newStatus
-    order.updatedAt = new Date().toISOString()
-
-    // Update timeline
-    const statusStepMap = {
-      'Diproses': 1,
-      'Siap Diambil': 2,
-      'Dalam Pengantaran': 2,
-      'Selesai': 3
+    try {
+      const res = await api.put(`/purchase/${id}`, { status: newStatus })
+      const raw = res.data?.data || res.data
+      return mapPurchase(raw)
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Gagal memperbarui status pesanan'
+      throw new Error(errorMsg)
     }
-    const stepIdx = statusStepMap[newStatus]
-    if (stepIdx !== undefined && Array.isArray(order.timeline) && order.timeline[stepIdx]) {
-      const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
-      order.timeline = order.timeline.map((t, i) => {
-        if (i < stepIdx) return { ...t, status: 'completed' }
-        if (i === stepIdx) {
-          return {
-            ...t,
-            status: newStatus === 'Selesai' ? 'completed' : 'active',
-            time: nowTime
-          }
-        }
-        return t
-      })
-    } else if (newStatus === 'Dibatalkan') {
-      if (!Array.isArray(order.timeline)) order.timeline = []
-      order.timeline.push({
-        step: 'Pesanan Dibatalkan',
-        time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
-        status: 'error'
-      })
-    }
+  },
 
-    _orders[idx] = order
-    saveOrders(_orders)
-    return order
+  /**
+   * Mengambil pesanan untuk consumer (kompatibilitas query)
+   */
+  async getByConsumerId(consumerId, user = null) {
+    return this.getAll({ consumer_id: consumerId })
+  },
+
+  /**
+   * Mengambil pesanan untuk supplier (kompatibilitas query)
+   */
+  async getBySupplierId(supplierId, user = null) {
+    return this.getAll({ supplier_id: supplierId })
   },
 
   async addReview(orderId, review) {
-    await delay(200)
-    const idx = _orders.findIndex(o => String(o.id) === String(orderId))
-    if (idx !== -1) {
-      _orders[idx] = { ..._orders[idx], review }
-      saveOrders(_orders)
+    try {
+      const res = await api.put(`/purchase/${orderId}`, {
+        rating: review.rating,
+        review_comment: review.comment,
+        reviewed_at: new Date().toISOString(),
+      })
+      return res.data?.data || review
+    } catch (err) {
+      console.warn('Gagal menyimpan ulasan ke backend:', err)
+      return review
     }
-    return review
-  }
+  },
 }
