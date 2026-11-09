@@ -1,8 +1,3 @@
-<script setup>
-import { RouterLink } from 'vue-router'
-import Logo from '@/components/base/Logo.vue'
-</script>
-
 <template>
   <footer class="bg-primary-dark text-white">
     <div class="section-container py-12">
