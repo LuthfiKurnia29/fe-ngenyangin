@@ -29,6 +29,13 @@ function goToDetail() {
   }
 }
 
+function goToStore(e) {
+  e.stopPropagation()
+  if (props.food.supplierId) {
+    router.push(`/toko/${props.food.supplierId}`)
+  }
+}
+
 function addToCart(e) {
   e.stopPropagation()
   if (!auth.isLoggedIn) {
@@ -81,12 +88,17 @@ function addToCart(e) {
         {{ food.name }}
       </h3>
 
-      <!-- Supplier -->
+      <!-- Supplier — clickable -->
       <p class="text-xs text-text-secondary flex items-center gap-1">
         <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
         </svg>
-        <span class="truncate">{{ food.supplierName }}</span>
+        <button
+          v-if="food.supplierId"
+          @click="goToStore"
+          class="truncate hover:text-primary hover:underline transition-colors cursor-pointer"
+        >{{ food.supplierName }}</button>
+        <span v-else class="truncate">{{ food.supplierName }}</span>
       </p>
 
       <!-- Outlet / Stock / Deadline row -->

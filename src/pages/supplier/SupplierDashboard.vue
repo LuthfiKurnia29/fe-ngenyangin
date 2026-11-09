@@ -52,7 +52,7 @@ const stats = computed(() => {
     totalOrders: orders.length,
     pendingOrders: orders.filter(o => o.status === 'Menunggu' || o.status === 'Diproses').length,
     revenue: orders
-      .filter(o => o.status === 'Selesai')
+      .filter(o => o.status === 'Selesai' && o.paymentStatus === 'Lunas')
       .reduce((s, o) => s + Number(o.total || 0), 0)
   }
 })
@@ -189,6 +189,15 @@ function formatDate(d) {
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             <StatusBadge :status="order.status" size="sm" />
+            <span
+              v-if="order.paymentStatus"
+              :class="[
+                'text-xs px-2 py-0.5 rounded-full font-medium',
+                order.paymentStatus === 'Lunas' ? 'bg-green-100 text-green-700' :
+                order.paymentStatus === 'Menunggu Pembayaran' ? 'bg-yellow-100 text-yellow-700' :
+                'bg-red-100 text-red-700'
+              ]"
+            >{{ order.paymentStatus }}</span>
             <svg class="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>

@@ -27,6 +27,17 @@ watch(() => auth.user, (u) => {
 
 function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
 function formatDate(d) { return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }
+
+// Badge warna status pembayaran
+function paymentBadgeClass(status) {
+  const map = {
+    'Lunas': 'bg-green-100 text-green-700',
+    'Menunggu Pembayaran': 'bg-yellow-100 text-yellow-700',
+    'Gagal': 'bg-red-100 text-red-700',
+    'Dibatalkan': 'bg-gray-100 text-gray-600',
+  }
+  return map[status] || 'bg-gray-100 text-gray-600'
+}
 </script>
 
 <template>
@@ -65,8 +76,14 @@ function formatDate(d) { return new Date(d).toLocaleDateString('id-ID', { day: '
                 <p class="text-xs text-text-secondary mt-0.5">{{ formatDate(order.createdAt) }}</p>
               </div>
             </div>
-            <div class="text-right flex-shrink-0">
+            <div class="text-right flex-shrink-0 space-y-1">
               <StatusBadge :status="order.status" size="sm" />
+              <!-- Badge status pembayaran -->
+              <div v-if="order.paymentStatus">
+                <span :class="['text-xs px-2 py-0.5 rounded-full font-medium', paymentBadgeClass(order.paymentStatus)]">
+                  {{ order.paymentStatus }}
+                </span>
+              </div>
               <p class="price-discount text-sm mt-1">{{ formatPrice(order.total) }}</p>
             </div>
           </div>
