@@ -27,7 +27,8 @@ const navItems = computed(() => {
     return [
       { label: 'Dashboard', to: '/admin', icon: 'bar-chart', exact: true },
       { label: 'Pengaduan', to: '/admin/pengaduan', icon: 'alert-circle' },
-      { label: 'Bantuan', to: '/admin/bantuan', icon: 'help-circle' },
+      { label: 'FAQ', to: '/admin/faq', icon: 'help-circle' },
+      { label: 'Kebijakan Keamanan Pangan', to: '/admin/bantuan', icon: 'file-text' },
       { label: 'Syarat & Ketentuan', to: '/admin/syarat', icon: 'file-text' },
       { label: 'Pengaturan', to: '/admin/pengaturan', icon: 'settings' },
     ]
