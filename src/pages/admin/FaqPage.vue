@@ -1,12 +1,33 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
-import { siteContentService } from '@/services/siteContentService'
+import { contentService } from '@/services/contentService'
 import { useNotificationStore } from '@/stores/notifications'
 
-const faq = ref(siteContentService.getFaq())
+const faq = ref([])
 const notify = useNotificationStore()
 const isSaving = ref(false)
+const isLoading = ref(true)
+
+onMounted(loadFaq)
+
+async function loadFaq() {
+  isLoading.value = true
+  try {
+    const [consumer, supplier] = await Promise.all([
+      contentService.get('faq', 'consumer'),
+      contentService.get('faq', 'supplier'),
+    ])
+    faq.value = [
+      ...consumer.content.map((item) => ({ ...item, audience: 'Konsumen' })),
+      ...supplier.content.map((item) => ({ ...item, audience: 'Supplier' })),
+    ]
+  } catch (error) {
+    notify.error(`FAQ belum dapat dimuat: ${error.message}`)
+  } finally {
+    isLoading.value = false
+  }
+}
 
 function addFaq() {
   faq.value.push({
@@ -17,10 +38,18 @@ function addFaq() {
   })
 }
 
-function save() {
+async function save() {
   isSaving.value = true
   try {
-    faq.value = siteContentService.saveFaq(faq.value)
+    await Promise.all(['Konsumen', 'Supplier'].map((audience) => (
+      contentService.save(
+        'faq',
+        audience === 'Konsumen' ? 'consumer' : 'supplier',
+        faq.value
+          .filter((item) => item.audience === audience)
+          .map(({ question, answer }) => ({ question, answer }))
+      )
+    )))
     notify.success('FAQ berhasil diperbarui.')
   } catch (error) {
     notify.error(`Perubahan belum disimpan: ${error.message}`)
@@ -38,14 +67,15 @@ function save() {
         <p class="text-text-secondary mt-1">Pertanyaan dan jawaban ini tampil pada halaman FAQ publik.</p>
       </div>
       <div class="flex gap-2">
-        <BaseButton size="sm" variant="outline" @click="addFaq">+ Tambah FAQ</BaseButton>
-        <BaseButton variant="primary" :loading="isSaving" @click="save">
+        <BaseButton size="sm" variant="outline" :disabled="isLoading" @click="addFaq">+ Tambah FAQ</BaseButton>
+        <BaseButton variant="primary" :loading="isSaving" :disabled="isLoading" @click="save">
           {{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}
         </BaseButton>
       </div>
     </div>
 
-    <div class="space-y-4">
+    <p v-if="isLoading" class="text-text-secondary">Memuat FAQ...</p>
+    <div v-else class="space-y-4">
       <article
         v-for="(item, index) in faq"
         :key="item.id || index"

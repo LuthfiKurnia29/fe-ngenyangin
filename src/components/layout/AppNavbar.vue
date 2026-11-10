@@ -105,11 +105,6 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick, 
             class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
             active-class="text-primary bg-primary-soft font-semibold"
           >Syarat & Ketentuan</RouterLink>
-          <RouterLink
-            to="/admin/pengaturan"
-            class="px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary-soft transition-colors"
-            active-class="text-primary bg-primary-soft font-semibold"
-          >Pengaturan</RouterLink>
         </template>
       </nav>
 
@@ -229,7 +224,6 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick, 
           <RouterLink to="/admin/pengaduan" class="sidebar-link" @click="mobileMenuOpen = false">Pengaduan</RouterLink>
           <RouterLink to="/admin/bantuan" class="sidebar-link" @click="mobileMenuOpen = false">Bantuan</RouterLink>
           <RouterLink to="/admin/syarat" class="sidebar-link" @click="mobileMenuOpen = false">Syarat & Ketentuan</RouterLink>
-          <RouterLink to="/admin/pengaturan" class="sidebar-link" @click="mobileMenuOpen = false">Pengaturan</RouterLink>
         </template>
         <template v-if="!auth.isLoggedIn">
           <RouterLink to="/masuk" class="sidebar-link" @click="mobileMenuOpen = false">Masuk</RouterLink>

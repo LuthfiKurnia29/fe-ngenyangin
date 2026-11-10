@@ -56,8 +56,10 @@
             </li>
           </ul>
           <div class="mt-4 p-3 bg-white/10 rounded-md">
-            <p class="text-xs text-white/70">Layanan pelanggan aktif:</p>
+            <p class="text-xs text-white/70">Layanan pelanggan dan pengaduan:</p>
             <p class="text-sm font-medium text-white">{{ contact.hours }}</p>
+            <p class="text-xs text-white/70 mt-1">Hubungi admin melalui nomor di atas. Pengaduan akan dicatat dan ditindaklanjuti oleh admin.</p>
+            <p v-if="contactError" class="text-xs text-amber-200 mt-1">Informasi kontak belum berhasil diperbarui.</p>
           </div>
         </div>
       </div>
@@ -73,8 +75,24 @@
 </template>
 
 <script setup>
+import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { siteContentService } from '@/services/siteContentService'
+import { contentService } from '@/services/contentService'
 
-const contact = siteContentService.getContact()
+const contact = ref({
+  email: 'halo@ngenyangin.id',
+  phone: '0800-1234-5678',
+  hours: 'Senin–Minggu, 07.00–22.00 WIB',
+})
+const contactError = ref('')
+
+onMounted(async () => {
+  try {
+    const record = await contentService.get('contact', 'all')
+    contact.value = record.content
+  } catch (error) {
+    contactError.value = error.message
+    console.error('Gagal memuat kontak footer:', error)
+  }
+})
 </script>

@@ -59,8 +59,8 @@ function formatPrice(p) { return 'Rp ' + p.toLocaleString('id-ID') }
             <span class="price-discount text-xl">{{ formatPrice(cart.subtotal) }}</span>
           </div>
           <p class="text-xs text-text-secondary mt-1">Ongkir dihitung saat checkout</p>
-          <div class="flex gap-3 mt-4">
-            <BaseButton variant="outline" @click="router.push('/jelajah')">Lanjut Belanja</BaseButton>
+          <div class="flex flex-col sm:flex-row gap-3 mt-4">
+            <BaseButton variant="outline" class="w-full sm:flex-1" @click="router.push('/jelajah')">Lanjut Belanja</BaseButton>
             <BaseButton variant="primary" class="flex-1" @click="router.push('/checkout')">Checkout</BaseButton>
           </div>
         </div>

@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getLocalFoods, LOCAL_CATEGORIES } from '@/services/foodServiceLocal'
+import { foodService } from '@/services/foodService'
+import { categoryService } from '@/services/categoryService'
 import FoodCard from '@/components/food/FoodCard.vue'
 
 const route = useRoute()
@@ -27,18 +28,50 @@ const locationQuery = ref(route.query.location || '')
 let debounceTimer = null
 
 // ── Categories ────────────────────────────────────────────
+const loadedCategories = ref([])
+const defaultCategories = [
+  'Makanan Berat',
+  'Jajanan',
+  'Roti & Kue',
+  'Minuman',
+  'Sayur & Buah'
+]
+
+async function loadCategories() {
+  try {
+    const res = await categoryService.getAll()
+    const list = Array.isArray(res) ? res : (res?.items || [])
+    if (list.length > 0) {
+      loadedCategories.value = list.map(item => {
+        if (typeof item === 'string') return { id: item, name: item }
+        return { id: item.id ?? item.name, name: item.name ?? item.id }
+      })
+      return
+    }
+  } catch (err) {
+    console.warn('Gagal memuat kategori dari backend, menggunakan kategori bawaan:', err)
+  }
+  loadedCategories.value = defaultCategories.map(c => ({ id: c, name: c }))
+}
+
 const categories = computed(() => [
   { id: '', name: 'Semua' },
-  ...LOCAL_CATEGORIES.map(c => ({ id: c, name: c })),
+  ...loadedCategories.value,
 ])
 
-// ── Load data ─────────────────────────────────────────────
+// ── Load data dari Backend ─────────────────────────────────
 async function loadPage(opts = {}) {
   isLoading.value = true
   loadError.value = ''
   try {
-    const result = await getLocalFoods({
-      page: opts.page ?? page.value,
+    const currentPage = opts.page ?? page.value
+    const currentCategory = opts.category !== undefined ? opts.category : activeCategory.value
+    const currentSearch = opts.search !== undefined ? opts.search : searchQuery.value
+    const currentDiscount = opts.discountOnly !== undefined ? opts.discountOnly : discountOnly.value
+
+    const params = {
+      page: currentPage,
+      limit: PAGE_SIZE,
       pageSize: PAGE_SIZE,
       category: opts.category ?? activeCategory.value,
       search: opts.search ?? searchQuery.value,
@@ -51,14 +84,17 @@ async function loadPage(opts = {}) {
     totalPages.value = result.totalPages
     page.value = result.page
   } catch (e) {
-    console.error('Gagal memuat katalog:', e)
-    loadError.value = e.message || 'Gagal memuat data'
+    console.error('Gagal memuat produk dari backend:', e)
+    loadError.value = e.response?.data?.message || e.message || 'Gagal memuat data dari server'
   } finally {
     isLoading.value = false
   }
 }
 
-onMounted(() => loadPage())
+onMounted(() => {
+  loadCategories()
+  loadPage()
+})
 
 // ── Sync URL params → reload ───────────────────────────────
 function syncAndLoad(newPage = 1) {

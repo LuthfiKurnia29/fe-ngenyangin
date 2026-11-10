@@ -19,6 +19,15 @@ const withAvatar = (user) => ({
 })
 
 export const userService = {
+  async getCount() {
+    try {
+      const res = await api.get('/auth/admin/user-count')
+      return unwrap(res).count
+    } catch (e) {
+      throw toError(e, 'Gagal mengambil jumlah pengguna')
+    }
+  },
+
   async login(email, password) {
     try {
       const res = await api.post('/auth/login', { email, password })
@@ -81,5 +90,23 @@ export const userService = {
 
   async logout() {
     try { await api.post('/auth/logout') } catch { /* abaikan */ }
+  },
+
+  async forgotPassword(email) {
+    try {
+      const res = await api.post('/auth/forgot-password', { email })
+      return unwrap(res)
+    } catch (e) {
+      throw toError(e, 'Gagal mengirim email reset password')
+    }
+  },
+
+  async resetPassword(token, password) {
+    try {
+      const res = await api.post('/auth/reset-password', { token, password, newPassword: password })
+      return unwrap(res)
+    } catch (e) {
+      throw toError(e, 'Gagal mereset password')
+    }
   },
 }
