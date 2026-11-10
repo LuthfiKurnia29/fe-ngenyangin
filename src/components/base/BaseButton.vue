@@ -21,20 +21,19 @@ defineProps({
   <button
     :type="type"
     :disabled="disabled || loading"
+    :aria-busy="loading"
     :class="[
-      'inline-flex items-center justify-center gap-2 font-medium rounded-full transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 select-none',
+      'inline-flex min-w-28 items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold leading-none transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 select-none disabled:cursor-not-allowed disabled:opacity-50',
       // Sizes
-      size === 'sm' && 'px-4 h-9 text-sm focus:ring-primary/30',
-      size === 'md' && 'px-6 h-12 text-base focus:ring-primary/30',
-      size === 'lg' && 'px-8 h-14 text-lg focus:ring-primary/30',
+      size === 'sm' && 'px-4 h-9 text-sm focus-visible:ring-primary/30',
+      size === 'md' && 'px-5 h-11 text-sm focus-visible:ring-primary/30',
+      size === 'lg' && 'px-6 h-12 text-base focus-visible:ring-primary/30',
       // Variants
-      variant === 'primary' && !disabled && !loading && 'bg-accent text-white hover:bg-accent-dark active:scale-95 focus:ring-accent/30',
-      variant === 'secondary' && !disabled && !loading && 'bg-primary text-white hover:bg-primary-dark active:scale-95',
-      variant === 'outline' && !disabled && !loading && 'border-2 border-primary text-primary hover:bg-primary-soft active:scale-95',
-      variant === 'ghost' && !disabled && !loading && 'text-primary hover:bg-primary-soft active:scale-95',
-      variant === 'danger' && !disabled && !loading && 'bg-error text-white hover:opacity-90 active:scale-95',
-      // Disabled
-      (disabled || loading) && 'opacity-50 cursor-not-allowed',
+      variant === 'primary' && 'bg-accent text-white hover:bg-accent-dark active:scale-[0.98] focus-visible:ring-accent/30',
+      variant === 'secondary' && 'bg-primary text-white hover:bg-primary-dark active:scale-[0.98] focus-visible:ring-primary/30',
+      variant === 'outline' && 'border border-primary bg-surface text-primary hover:bg-primary-soft active:scale-[0.98] focus-visible:ring-primary/30',
+      variant === 'ghost' && 'text-primary hover:bg-primary-soft active:scale-[0.98] focus-visible:ring-primary/30',
+      variant === 'danger' && 'bg-error text-white hover:opacity-90 active:scale-[0.98] focus-visible:ring-error/30',
       // Full width
       fullWidth && 'w-full'
     ]"

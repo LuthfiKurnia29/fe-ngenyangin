@@ -41,7 +41,6 @@ const SupplierProfilePage = () => import('@/pages/supplier/SupplierProfilePage.v
 const AdminDashboard = () => import('@/pages/admin/AdminDashboard.vue')
 const ComplaintsPage = () => import('@/pages/admin/ComplaintsPage.vue')
 const HelpPage = () => import('@/pages/admin/HelpPage.vue')
-const FaqPage = () => import('@/pages/admin/FaqPage.vue')
 const TermsPage = () => import('@/pages/admin/TermsPage.vue')
 const SettingsPage = () => import('@/pages/admin/SettingsPage.vue')
 
@@ -106,7 +105,7 @@ const routes = [
       { path: '', name: 'AdminDashboard', component: AdminDashboard, meta: { role: 'admin' } },
       { path: 'pengaduan', name: 'Complaints', component: ComplaintsPage, meta: { role: 'admin' } },
       { path: 'bantuan', name: 'Help', component: HelpPage, meta: { role: 'admin' } },
-      { path: 'faq', name: 'AdminFaq', component: FaqPage, meta: { role: 'admin' } },
+      { path: 'faq', redirect: { name: 'Help', query: { section: 'faq' } } },
       { path: 'syarat', name: 'Terms', component: TermsPage, meta: { role: 'admin' } },
       { path: 'pengaturan', name: 'Settings', component: SettingsPage, meta: { role: 'admin' } },
     ]

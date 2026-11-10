@@ -1,12 +1,14 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import BaseButton from '@/components/base/BaseButton.vue'
 import FormInput from '@/components/base/FormInput.vue'
 import Logo from '@/components/base/Logo.vue'
+import { contentService } from '@/services/contentService'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 // Consumer fields
@@ -14,7 +16,7 @@ const name = ref('')
 const email = ref('')
 const phone = ref('')
 const password = ref('')
-const selectedRole = ref('')
+const selectedRole = ref(route.query.role === 'supplier' ? 'supplier' : '')
 const gender = ref('')
 
 // Supplier-only fields
@@ -23,6 +25,10 @@ const storeAddress = ref('')
 const storeDescription = ref('')
 const storePhoto = ref(null)
 const storePhotoName = ref('')
+const acceptedTerms = ref(false)
+const termsVersion = ref(null)
+const termsLoading = ref(false)
+const termsError = ref('')
 
 const formError = ref('')
 
@@ -32,6 +38,23 @@ const roles = [
 ]
 
 const isSupplier = computed(() => selectedRole.value === 'supplier')
+
+watch(selectedRole, async (role) => {
+  acceptedTerms.value = false
+  termsVersion.value = null
+  termsError.value = ''
+  if (!role) return
+
+  termsLoading.value = true
+  try {
+    const record = await contentService.get('terms', role)
+    if (selectedRole.value === role) termsVersion.value = record.version
+  } catch (error) {
+    if (selectedRole.value === role) termsError.value = error.message
+  } finally {
+    if (selectedRole.value === role) termsLoading.value = false
+  }
+}, { immediate: true })
 
 const MAX_PHOTO_MB = 2
 function onPhotoChange(e) {
@@ -62,6 +85,10 @@ async function handleRegister() {
     formError.value = 'Nama Toko/Outlet wajib diisi untuk Supplier'
     return
   }
+  if (!acceptedTerms.value || !termsVersion.value) {
+    formError.value = 'Baca dan setujui Syarat & Ketentuan sebelum mendaftar.'
+    return
+  }
   try {
     const payload = {
       name: name.value,
@@ -69,6 +96,8 @@ async function handleRegister() {
       phone: phone.value,
       password: password.value,
       role: selectedRole.value,
+      termsAccepted: acceptedTerms.value,
+      termsVersion: termsVersion.value,
     }
     if (isSupplier.value) {
       payload.outlet = outlet.value
@@ -183,6 +212,30 @@ async function handleRegister() {
             <FormInput v-model="password" label="Password" type="password" placeholder="Minimal 6 karakter" required />
           </template>
 
+          <div v-if="selectedRole" class="rounded-md border border-border p-4">
+            <p v-if="termsLoading" class="text-sm text-text-secondary">Memuat Syarat & Ketentuan...</p>
+            <p v-else-if="termsError" class="text-sm text-error">{{ termsError }}</p>
+            <div v-else class="flex items-start gap-2 text-sm text-text-secondary">
+              <input
+                v-model="acceptedTerms"
+                id="acceptedTerms"
+                type="checkbox"
+                class="mt-1 accent-primary"
+                required
+              />
+              <label for="acceptedTerms">
+                Saya telah membaca dan menyetujui
+              </label>
+              <RouterLink
+                :to="{ name: 'PublicTerms', query: { audience: selectedRole } }"
+                target="_blank"
+                class="font-medium text-primary hover:underline"
+              >
+                Baca Syarat & Ketentuan {{ isSupplier ? 'Supplier' : 'Konsumen' }}
+              </RouterLink>
+            </div>
+          </div>
+
           <!-- Error -->
           <div v-if="formError" class="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-error">
             {{ formError }}
@@ -193,7 +246,7 @@ async function handleRegister() {
             variant="primary"
             full-width
             :loading="auth.isLoading"
-            :disabled="!selectedRole"
+            :disabled="!selectedRole || termsLoading || !termsVersion || !acceptedTerms"
           >
             Daftar Sekarang
           </BaseButton>

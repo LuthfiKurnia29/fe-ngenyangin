@@ -1,17 +1,40 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { siteContentService } from '@/services/siteContentService'
+import { onMounted, ref, computed } from 'vue'
+import { contentService } from '@/services/contentService'
 
-const faq = siteContentService.getFaq()
+const faq = ref([])
 const activeId = ref(null)
 const activeAudience = ref('Semua')
 const audiences = ['Semua', 'Konsumen', 'Supplier']
+const isLoading = ref(true)
+const errorMessage = ref('')
 
 const filteredFaq = computed(() => (
   activeAudience.value === 'Semua'
-    ? faq
-    : faq.filter((item) => item.audience === activeAudience.value)
+    ? faq.value
+    : faq.value.filter((item) => item.audience === activeAudience.value)
 ))
+
+onMounted(loadFaq)
+
+async function loadFaq() {
+  isLoading.value = true
+  errorMessage.value = ''
+  try {
+    const [consumer, supplier] = await Promise.all([
+      contentService.get('faq', 'consumer'),
+      contentService.get('faq', 'supplier'),
+    ])
+    faq.value = [
+      ...consumer.content.map((item) => ({ ...item, audience: 'Konsumen' })),
+      ...supplier.content.map((item) => ({ ...item, audience: 'Supplier' })),
+    ]
+  } catch (error) {
+    errorMessage.value = error.message
+  } finally {
+    isLoading.value = false
+  }
+}
 
 function toggle(index) {
   activeId.value = activeId.value === index ? null : index
@@ -43,7 +66,12 @@ function toggle(index) {
         </button>
       </div>
 
-      <div class="space-y-3">
+      <p v-if="isLoading" class="text-center text-text-secondary">Memuat FAQ...</p>
+      <p v-else-if="errorMessage" class="text-center text-error">{{ errorMessage }}</p>
+      <p v-else-if="filteredFaq.length === 0" class="text-center text-text-secondary">
+        Belum ada FAQ untuk pilihan ini.
+      </p>
+      <div v-else class="space-y-3">
         <article
           v-for="(item, index) in filteredFaq"
           :key="item.id || item.question"

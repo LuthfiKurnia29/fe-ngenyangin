@@ -16,7 +16,13 @@ const categoriesLoading = ref(true)
 onMounted(async () => {
   try {
     const [all, categoryItems] = await Promise.all([
-      foodService.getAll(),
+      foodService.getAll({
+        limit: 4,
+        page: 1,
+        sortBy: 'created_at',
+        order: 'desc',
+        availableOnly: true,
+      }),
       categoryService.getAll(),
     ])
     featuredFoods.value = all.slice(0, 4)
@@ -107,6 +113,16 @@ const testimonials = [
       <div class="absolute bottom-10 left-10 w-48 h-48 bg-accent/5 rounded-full blur-3xl"></div>
     </section>
 
+    <!-- About Us -->
+    <section id="tentang" class="py-12 md:py-section scroll-mt-20">
+      <div class="section-container max-w-3xl text-center">
+        <h2 class="font-poppins font-semibold text-headline text-primary-dark">Tentang Kami</h2>
+        <p class="text-text-secondary mt-4 leading-relaxed">
+          NGENYANGIN menghubungkan UMKM kuliner yang memiliki surplus makanan dengan konsumen yang ingin menikmati makanan berkualitas dengan harga lebih hemat. Kami membantu makanan yang masih layak dinikmati menemukan pembelinya, bukan berakhir sebagai sampah.
+        </p>
+      </div>
+    </section>
+
     <!-- Categories -->
     <section class="py-12 md:py-section">
       <div class="section-container">
@@ -139,7 +155,7 @@ const testimonials = [
         <div class="flex items-end justify-between mb-8">
           <div>
             <h2 class="font-poppins font-semibold text-headline text-primary-dark">Surplus Hari Ini 🔥</h2>
-            <p class="text-text-secondary mt-1">Makanan segar dengan diskon terbaik, segera habis!</p>
+            <p class="text-text-secondary mt-1">4 surplus terbaru yang masih tersedia, segera habis!</p>
           </div>
           <button @click="router.push('/daftar')" class="hidden md:flex items-center gap-1 text-sm font-medium text-primary hover:underline">
             Lihat semua
@@ -178,7 +194,7 @@ const testimonials = [
     </section>
 
     <!-- How It Works -->
-    <section class="py-12 md:py-section">
+    <section id="cara-kerja" class="py-12 md:py-section scroll-mt-20">
       <div class="section-container">
         <div class="text-center mb-12">
           <h2 class="font-poppins font-semibold text-headline text-primary-dark">Cara Kerja NGENYANGIN</h2>
@@ -200,6 +216,16 @@ const testimonials = [
             <p class="text-sm text-text-secondary leading-relaxed">{{ item.desc }}</p>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Mission -->
+    <section id="misi" class="py-12 md:py-section bg-surface-mint scroll-mt-20">
+      <div class="section-container max-w-3xl text-center">
+        <h2 class="font-poppins font-semibold text-headline text-primary-dark">Misi Kami</h2>
+        <p class="text-text-secondary mt-4 leading-relaxed">
+          Misi kami adalah mengurangi pemborosan pangan dengan mempertemukan supplier dan konsumen, sekaligus mendukung UMKM kuliner agar surplus makanan mereka dapat memberi manfaat lebih.
+        </p>
       </div>
     </section>
 

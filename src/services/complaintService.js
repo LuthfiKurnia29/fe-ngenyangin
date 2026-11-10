@@ -1,43 +1,45 @@
-import complaintsData from '@/data/complaints.json'
+import api from './api'
 
-const delay = (ms = 150) => new Promise(resolve => setTimeout(resolve, ms))
-let _complaints = [...complaintsData]
+const unwrap = (response) => response.data?.data ?? response.data
+
+function toError(error, fallback) {
+  if (error.response?.data?.message) return new Error(error.response.data.message)
+  if (error.request && !error.response) {
+    return new Error('Tidak bisa terhubung ke server. Pastikan backend berjalan.')
+  }
+  return new Error(error.message || fallback)
+}
 
 export const complaintService = {
   async getAll() {
-    await delay()
-    return [..._complaints]
-  },
-
-  async getById(id) {
-    await delay()
-    const c = _complaints.find(c => c.id === id)
-    if (!c) throw new Error('Pengaduan tidak ditemukan')
-    return { ...c }
-  },
-
-  async resolve(id, resolution) {
-    await delay(200)
-    const idx = _complaints.findIndex(c => c.id === id)
-    if (idx === -1) throw new Error('Tidak ditemukan')
-    _complaints[idx] = {
-      ..._complaints[idx],
-      status: 'Terselesaikan',
-      resolution,
-      resolvedAt: new Date().toISOString()
+    try {
+      return unwrap(await api.get('/complaints'))
+    } catch (error) {
+      throw toError(error, 'Gagal mengambil daftar pengaduan.')
     }
-    return _complaints[idx]
   },
 
   async create(data) {
-    await delay(300)
-    const newComplaint = {
-      id: 'c' + Date.now(),
-      ...data,
-      status: 'Menunggu Resolusi',
-      reportedAt: new Date().toISOString()
+    try {
+      return unwrap(await api.post('/complaints', data))
+    } catch (error) {
+      throw toError(error, 'Gagal mencatat pengaduan.')
     }
-    _complaints.unshift(newComplaint)
-    return newComplaint
-  }
+  },
+
+  async update(id, data) {
+    try {
+      return unwrap(await api.put(`/complaints/${id}`, data))
+    } catch (error) {
+      throw toError(error, 'Gagal memperbarui pengaduan.')
+    }
+  },
+
+  async remove(id) {
+    try {
+      return unwrap(await api.delete(`/complaints/${id}`))
+    } catch (error) {
+      throw toError(error, 'Gagal menghapus pengaduan.')
+    }
+  },
 }

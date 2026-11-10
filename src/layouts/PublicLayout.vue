@@ -1,6 +1,9 @@
 <script setup>
+import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
+
+const route = useRoute()
 </script>
 
 <template>
@@ -9,7 +12,6 @@ import AppFooter from '@/components/layout/AppFooter.vue'
     <main class="flex-1">
       <RouterView />
     </main>
-    <AppFooter />
-
+    <AppFooter v-if="!route.meta.noFooter" />
   </div>
 </template>
