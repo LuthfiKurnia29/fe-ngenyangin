@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getLocalFoods, LOCAL_CATEGORIES } from '@/services/foodServiceLocal'
+import { foodService } from '@/services/foodService'
+import { categoryService } from '@/services/categoryService'
 import FoodCard from '@/components/food/FoodCard.vue'
 
 const route = useRoute()
@@ -25,36 +26,115 @@ const discountOnly = ref(route.query.discount === '1')
 let debounceTimer = null
 
 // ── Categories ────────────────────────────────────────────
+const loadedCategories = ref([])
+const defaultCategories = [
+  'Makanan Berat',
+  'Jajanan',
+  'Roti & Kue',
+  'Minuman',
+  'Sayur & Buah'
+]
+
+async function loadCategories() {
+  try {
+    const res = await categoryService.getAll()
+    const list = Array.isArray(res) ? res : (res?.items || [])
+    if (list.length > 0) {
+      loadedCategories.value = list.map(item => {
+        if (typeof item === 'string') return { id: item, name: item }
+        return { id: item.id ?? item.name, name: item.name ?? item.id }
+      })
+      return
+    }
+  } catch (err) {
+    console.warn('Gagal memuat kategori dari backend, menggunakan kategori bawaan:', err)
+  }
+  loadedCategories.value = defaultCategories.map(c => ({ id: c, name: c }))
+}
+
 const categories = computed(() => [
   { id: '', name: 'Semua' },
-  ...LOCAL_CATEGORIES.map(c => ({ id: c, name: c })),
+  ...loadedCategories.value,
 ])
 
-// ── Load data ─────────────────────────────────────────────
+// ── Load data dari Backend ─────────────────────────────────
 async function loadPage(opts = {}) {
   isLoading.value = true
   loadError.value = ''
   try {
-    const result = await getLocalFoods({
-      page: opts.page ?? page.value,
+    const currentPage = opts.page ?? page.value
+    const currentCategory = opts.category !== undefined ? opts.category : activeCategory.value
+    const currentSearch = opts.search !== undefined ? opts.search : searchQuery.value
+    const currentDiscount = opts.discountOnly !== undefined ? opts.discountOnly : discountOnly.value
+
+    const params = {
+      page: currentPage,
+      limit: PAGE_SIZE,
       pageSize: PAGE_SIZE,
-      category: opts.category ?? activeCategory.value,
-      search: opts.search ?? searchQuery.value,
-      discountOnly: opts.discountOnly ?? discountOnly.value,
-    })
-    foods.value = result.items
-    total.value = result.total
-    totalPages.value = result.totalPages
-    page.value = result.page
+    }
+
+    if (currentSearch && currentSearch.trim()) {
+      params.search = currentSearch.trim()
+    }
+
+    if (currentCategory) {
+      params.category = currentCategory
+      if (!isNaN(Number(currentCategory))) {
+        params.category_id = Number(currentCategory)
+      }
+    }
+
+    if (currentDiscount) {
+      params.discount = '1'
+      params.has_discount = true
+    }
+
+    const result = await foodService.getPaginated(params)
+
+    let items = result.items || []
+
+    // Filter tambahan client-side jika backend tidak memfilter semua parameter:
+    if (currentCategory) {
+      const matchCat = (f) =>
+        String(f.category).toLowerCase() === String(currentCategory).toLowerCase() ||
+        String(f.categoryId) === String(currentCategory)
+      // Jika backend belum memfilter kategori
+      if (!items.every(matchCat)) {
+        items = items.filter(matchCat)
+      }
+    }
+    if (currentSearch && currentSearch.trim()) {
+      const q = currentSearch.trim().toLowerCase()
+      if (!items.every(f => f.name?.toLowerCase().includes(q) || f.supplierName?.toLowerCase().includes(q))) {
+        items = items.filter(f =>
+          f.name?.toLowerCase().includes(q) ||
+          f.supplierName?.toLowerCase().includes(q) ||
+          f.description?.toLowerCase().includes(q)
+        )
+      }
+    }
+    if (currentDiscount) {
+      if (!items.every(f => (f.discount || 0) > 0)) {
+        items = items.filter(f => (f.discount || 0) > 0)
+      }
+    }
+
+    foods.value = items
+    total.value = result.total || items.length
+    totalPages.value = Math.max(1, result.totalPages || Math.ceil((result.total || items.length) / PAGE_SIZE))
+    page.value = currentPage
   } catch (e) {
-    console.error('Gagal memuat katalog:', e)
-    loadError.value = e.message || 'Gagal memuat data'
+    console.error('Gagal memuat produk dari backend:', e)
+    loadError.value = e.response?.data?.message || e.message || 'Gagal memuat data dari server'
   } finally {
     isLoading.value = false
   }
 }
 
-onMounted(() => loadPage())
+onMounted(() => {
+  loadCategories()
+  loadPage()
+})
 
 // ── Sync URL params → reload ───────────────────────────────
 function syncAndLoad(newPage = 1) {
@@ -119,7 +199,7 @@ const activeCategoryLabel = computed(() =>
       <!-- Header -->
       <div class="mb-8">
         <h1 class="font-poppins font-bold text-headline text-primary-dark">Jelajahi Makanan Surplus 🍽️</h1>
-        <p class="text-text-secondary mt-1">Temukan surplus makanan segar terdekat dengan diskon terbaik</p>
+        <p class="text-text-secondary mt-1">Temukan surplus makanan segar terdekat dari mitra UMKM kuliner dengan diskon terbaik</p>
       </div>
 
       <!-- Search + Discount filter row -->
@@ -140,7 +220,7 @@ const activeCategoryLabel = computed(() =>
         <button
           @click="toggleDiscount"
           :class="[
-            'flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium transition-all whitespace-nowrap',
+            'flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium transition-all whitespace-nowrap cursor-pointer',
             discountOnly
               ? 'bg-accent text-white border-accent shadow-sm'
               : 'bg-surface border-border text-text-secondary hover:border-primary/40 hover:text-primary'
@@ -161,7 +241,7 @@ const activeCategoryLabel = computed(() =>
             :key="cat.id"
             @click="selectCategory(cat)"
             :class="[
-              'flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-all',
+              'flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-all cursor-pointer',
               activeCategory === cat.id
                 ? 'bg-primary text-white border-primary shadow-sm'
                 : 'bg-surface border-border text-text-secondary hover:border-primary/40 hover:text-primary'
@@ -175,7 +255,7 @@ const activeCategoryLabel = computed(() =>
       <!-- Results summary -->
       <div class="flex items-center justify-between mb-4">
         <p class="text-sm text-text-secondary">
-          <span v-if="isLoading">Memuat katalog...</span>
+          <span v-if="isLoading">Memuat katalog makanan dari server...</span>
           <span v-else>
             Menampilkan
             <strong class="text-text-primary">{{ foods.length }}</strong>
@@ -193,7 +273,7 @@ const activeCategoryLabel = computed(() =>
 
       <!-- Loading skeleton -->
       <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div v-for="i in 8" :key="i" class="bg-surface rounded-md border border-border animate-pulse">
+        <div v-for="i in 8" :key="i" class="bg-surface rounded-md border border-border animate-pulse overflow-hidden">
           <div class="h-44 bg-border/30 rounded-t-md"></div>
           <div class="p-4 space-y-3">
             <div class="h-4 bg-border/30 rounded w-20"></div>
@@ -205,30 +285,33 @@ const activeCategoryLabel = computed(() =>
       </div>
 
       <!-- Error state -->
-      <div v-else-if="loadError" class="text-center py-16">
+      <div v-else-if="loadError" class="text-center py-16 bg-surface rounded-xl border border-border/60 p-8 max-w-lg mx-auto">
         <p class="text-4xl mb-4">⚠️</p>
-        <p class="text-text-primary font-semibold text-lg">Gagal memuat katalog</p>
-        <p class="text-text-secondary text-sm mt-1">{{ loadError }}</p>
-        <button @click="loadPage()" class="mt-4 px-4 py-2 rounded-md bg-primary text-white text-sm hover:bg-primary-dark transition-colors">
+        <p class="text-text-primary font-semibold text-lg">Gagal memuat produk dari server</p>
+        <p class="text-text-secondary text-sm mt-1 mb-5">{{ loadError }}</p>
+        <button
+          @click="loadPage()"
+          class="px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors cursor-pointer shadow-sm"
+        >
           Coba Lagi
         </button>
       </div>
 
       <!-- Empty state -->
-      <div v-else-if="foods.length === 0" class="text-center py-16">
+      <div v-else-if="foods.length === 0" class="text-center py-16 bg-surface rounded-xl border border-border/60 p-8 max-w-lg mx-auto">
         <p class="text-4xl mb-4">🍃</p>
         <p class="text-text-primary font-semibold text-lg">Tidak ada makanan ditemukan</p>
-        <p class="text-text-secondary text-sm mt-1">Coba kata kunci atau kategori lain</p>
+        <p class="text-text-secondary text-sm mt-1 mb-5">Coba kata kunci atau kategori lain</p>
         <button
           v-if="searchQuery || activeCategory || discountOnly"
           @click="() => { searchQuery = ''; activeCategory = ''; discountOnly = false; syncAndLoad(1) }"
-          class="mt-4 px-4 py-2 rounded-md bg-primary text-white text-sm hover:bg-primary-dark transition-colors"
+          class="px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors cursor-pointer shadow-sm"
         >
           Reset Filter
         </button>
       </div>
 
-      <!-- Food grid (max 24 cards at once) -->
+      <!-- Food grid -->
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <FoodCard v-for="food in foods" :key="food.id" :food="food" />
       </div>
@@ -238,7 +321,7 @@ const activeCategoryLabel = computed(() =>
         <button
           @click="goToPage(page - 1)"
           :disabled="page <= 1"
-          class="px-3 py-2 rounded-md border border-border text-sm font-medium text-text-secondary hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          class="px-3 py-2 rounded-md border border-border text-sm font-medium text-text-secondary hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
         >
           ‹ Sebelumnya
         </button>
@@ -251,7 +334,7 @@ const activeCategoryLabel = computed(() =>
           <button
             @click="goToPage(p)"
             :class="[
-              'w-9 h-9 rounded-md border text-sm font-medium transition-all',
+              'w-9 h-9 rounded-md border text-sm font-medium transition-all cursor-pointer',
               p === page
                 ? 'bg-primary text-white border-primary shadow-sm'
                 : 'border-border text-text-secondary hover:border-primary hover:text-primary'
@@ -262,7 +345,7 @@ const activeCategoryLabel = computed(() =>
         <button
           @click="goToPage(page + 1)"
           :disabled="page >= totalPages"
-          class="px-3 py-2 rounded-md border border-border text-sm font-medium text-text-secondary hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          class="px-3 py-2 rounded-md border border-border text-sm font-medium text-text-secondary hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
         >
           Selanjutnya ›
         </button>
