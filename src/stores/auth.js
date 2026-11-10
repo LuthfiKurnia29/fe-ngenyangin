@@ -71,11 +71,37 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-  await userService.logout()
-  user.value = null
-  localStorage.removeItem('ngenyangin_user')
-  localStorage.removeItem('ngenyangin_token')
-}
+    await userService.logout()
+    user.value = null
+    localStorage.removeItem('ngenyangin_user')
+    localStorage.removeItem('ngenyangin_token')
+  }
 
-  return { user, isLoading, error, isLoggedIn, role, userName, login, register, updateProfile, fetchMe, logout }
+  async function forgotPassword(email) {
+    isLoading.value = true
+    error.value = null
+    try {
+      return await userService.forgotPassword(email)
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function resetPassword(token, newPassword) {
+    isLoading.value = true
+    error.value = null
+    try {
+      return await userService.resetPassword(token, newPassword)
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  return { user, isLoading, error, isLoggedIn, role, userName, login, register, updateProfile, fetchMe, logout, forgotPassword, resetPassword }
 })

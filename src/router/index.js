@@ -10,6 +10,8 @@ const DashboardLayout = () => import('@/layouts/DashboardLayout.vue')
 const LandingPage = () => import('@/pages/public/LandingPage.vue')
 const LoginPage = () => import('@/pages/public/LoginPage.vue')
 const RegisterPage = () => import('@/pages/public/RegisterPage.vue')
+const ForgotPasswordPage = () => import('@/pages/public/ForgotPasswordPage.vue')
+const ResetPasswordPage = () => import('@/pages/public/ResetPasswordPage.vue')
 const PublicTermsPage = () => import('@/pages/public/TermsPage.vue')
 const PublicInfoPage = () => import('@/pages/public/InfoPage.vue')
 const PublicHelpPage = () => import('@/pages/public/PublicHelpPage.vue')
@@ -52,6 +54,8 @@ const routes = [
       { path: '', name: 'Landing', component: LandingPage, meta: { public: true } },
       { path: 'masuk', name: 'Login', component: LoginPage, meta: { public: true, noFooter: true } },
       { path: 'daftar', name: 'Register', component: RegisterPage, meta: { public: true, noFooter: true } },
+      { path: 'lupa-password', name: 'ForgotPassword', component: ForgotPasswordPage, meta: { public: true, noFooter: true } },
+      { path: 'reset-password', name: 'ResetPassword', component: ResetPasswordPage, meta: { public: true, noFooter: true } },
       { path: 'syarat-ketentuan', name: 'PublicTerms', component: PublicTermsPage, meta: { public: true } },
       { path: 'tentang/:slug', name: 'PublicInfo', component: PublicInfoPage, meta: { public: true } },
       { path: 'bantuan', name: 'PublicHelp', component: PublicHelpPage, meta: { public: true } },
@@ -111,6 +115,7 @@ const routes = [
   // Alias
   { path: '/login', redirect: '/masuk' },
   { path: '/register', redirect: '/daftar' },
+  { path: '/forgot-password', redirect: '/lupa-password' },
   { path: '/terms', redirect: '/syarat-ketentuan' },
 
   // Catch-all
@@ -130,7 +135,7 @@ router.beforeEach((to, _from, next) => {
   const auth = useAuthStore()
 
   if (to.meta.public) {
-    if (auth.isLoggedIn && (to.name === 'Login' || to.name === 'Register')) {
+    if (auth.isLoggedIn && (to.name === 'Login' || to.name === 'Register' || to.name === 'ForgotPassword' || to.name === 'ResetPassword')) {
       return next(getRoleDashboard(auth.role))
     }
     return next()

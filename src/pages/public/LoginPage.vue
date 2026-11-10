@@ -60,13 +60,23 @@ async function handleLogin() {
             required
           />
 
-          <FormInput
-            v-model="password"
-            label="Password"
-            type="password"
-            placeholder="Masukkan password"
-            required
-          />
+          <div>
+            <FormInput
+              v-model="password"
+              label="Password"
+              type="password"
+              placeholder="Masukkan password"
+              required
+            />
+            <div class="flex justify-end mt-1.5">
+              <RouterLink
+                :to="{ path: '/lupa-password', query: email ? { email } : {} }"
+                class="text-xs text-primary font-medium hover:underline focus:outline-none"
+              >
+                Lupa password?
+              </RouterLink>
+            </div>
+          </div>
 
           <!-- Error -->
           <div v-if="formError" class="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-error flex items-center gap-2">
