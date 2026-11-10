@@ -73,27 +73,26 @@ function addToCart(e) {
     :aria-label="`Lihat detail ${food.name}`"
   >
     <!-- Food Image -->
-    <div>
-      <div class="relative overflow-hidden bg-surface-alt" style="aspect-ratio: 4/3;">
-        <img
-          :src="food.image || placeholder"
-          :alt="food.name"
-          @error="onImageError"
-          class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
-        />
-        <!-- Discount Badge -->
-        <span v-if="food.discount > 0" class="discount-badge">-{{ food.discount }}%</span>
+    <div class="relative aspect-[4/3] overflow-hidden bg-primary-soft">
+      <img
+        :src="food.image || placeholder"
+        :alt="food.name"
+        @error="$event.target.src = placeholder"
+        class="absolute inset-0 w-full h-full max-w-none object-cover object-center transition-transform duration-300 group-hover:scale-105"
+        loading="lazy"
+        decoding="async"
+      />
+      <!-- Discount Badge -->
+      <span v-if="food.discount > 0" class="discount-badge">-{{ food.discount }}%</span>
 
-        <!-- Urgency overlay if very few left -->
-        <div
-          v-if="food.stock > 0 && food.stock <= 3"
-          class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-4"
-        >
-          <span class="text-white text-xs font-semibold">
-            🔥 Tersisa {{ food.stock }} porsi!
-          </span>
-        </div>
+      <!-- Urgency overlay if very few left -->
+      <div
+        v-if="food.stock <= 3"
+        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-4"
+      >
+        <span class="text-white text-xs font-semibold">
+          🔥 Tersisa {{ food.stock }} porsi!
+        </span>
       </div>
 
       <!-- Card Body -->

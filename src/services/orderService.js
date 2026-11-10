@@ -173,17 +173,35 @@ export const orderService = {
     }
   },
 
+  async createPayment(id) {
+    try {
+      const res = await api.post(`/purchase/${id}/pay`)
+      const data = res.data?.data || res.data
+      return {
+        snapToken: data?.snap_token || data?.token || null,
+        paymentUrl: data?.payment_url || data?.redirect_url || null,
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Gagal menyiapkan pembayaran Midtrans'
+      throw new Error(errorMsg)
+    }
+  },
+
   /**
    * Cek status transaksi langsung dari Midtrans & sinkronisasikan status DB
    */
   async checkStatus(id) {
     try {
       const res = await api.get(`/purchase/${id}/status`)
-      const raw = res.data?.data?.order || res.data?.data || res.data
-      return mapPurchase(raw)
+      const data = res.data?.data || res.data
+      const order = mapPurchase(data?.order || data)
+      if (data?.midtrans?.transaction_status === 'not_found') {
+        order.paymentCheckStatus = 'not_found'
+      }
+      return order
     } catch (err) {
-      console.warn('Gagal memeriksa status Midtrans:', err)
-      return null
+      const errorMsg = err.response?.data?.message || err.message || 'Gagal memeriksa status Midtrans'
+      throw new Error(errorMsg)
     }
   },
 

@@ -60,12 +60,16 @@ async function handleCheckPayment() {
     const updated = await orderService.checkStatus(order.value.id)
     if (updated) {
       order.value = updated
-      notify.success(`Status pembayaran diperbarui: ${updated.status}`)
+      if (updated.paymentCheckStatus === 'not_found') {
+        notify.info('Transaksi belum ditemukan di Midtrans. Pilih “Lanjutkan Pembayaran” untuk membuat transaksi baru.')
+      } else {
+        notify.success(`Status pembayaran diperbarui: ${updated.status}`)
+      }
     } else {
       notify.info('Status pembayaran belum berubah dari Midtrans.')
     }
   } catch (e) {
-    notify.error('Gagal memeriksa status pembayaran Midtrans')
+    notify.error(e.message || 'Gagal memeriksa status pembayaran Midtrans')
   } finally {
     isCheckingStatus.value = false
   }
@@ -75,7 +79,17 @@ async function handlePayNow() {
   if (!order.value) return
   isPaying.value = true
   try {
-    const snapToken = order.value.snapToken || order.value.snap_token
+    let snapToken = order.value.snapToken || order.value.snap_token
+    let paymentUrl = order.value.paymentUrl || order.value.payment_url
+
+    if (!snapToken) {
+      const payment = await orderService.createPayment(order.value.id)
+      snapToken = payment.snapToken
+      paymentUrl = payment.paymentUrl || paymentUrl
+      order.value.snapToken = snapToken
+      order.value.paymentUrl = paymentUrl
+    }
+
     if (snapToken) {
       const { status } = await paymentService.payWithSnap(snapToken)
       if (status === 'success') {
@@ -87,8 +101,8 @@ async function handlePayNow() {
       } else if (status === 'closed') {
         notify.info('Popup pembayaran ditutup')
       }
-    } else if (order.value.paymentUrl || order.value.payment_url) {
-      window.open(order.value.paymentUrl || order.value.payment_url, '_blank')
+    } else if (paymentUrl) {
+      window.open(paymentUrl, '_blank', 'noopener,noreferrer')
     } else {
       notify.error('Link pembayaran tidak tersedia')
     }
@@ -161,7 +175,6 @@ async function handlePayNow() {
           </div>
           <div class="flex flex-wrap gap-3 mt-4">
             <BaseButton
-              v-if="order.snapToken || order.paymentUrl"
               variant="primary"
               size="sm"
               :loading="isPaying"

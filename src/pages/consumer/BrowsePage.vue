@@ -20,7 +20,9 @@ const PAGE_SIZE = 24
 const page = ref(Number(route.query.page) || 1)
 const activeCategory = ref(route.query.category || '')
 const searchQuery = ref(route.query.q || '')
-const discountOnly = ref(route.query.discount === '1')
+const minDiscount = ref(Math.min(100, Math.max(1, Number(route.query.minDiscount) || 1)))
+const pickupWithinHours = ref(route.query.pickupWithinHours || '')
+const locationQuery = ref(route.query.location || '')
 
 // Debounce timer ref
 let debounceTimer = null
@@ -71,58 +73,16 @@ async function loadPage(opts = {}) {
       page: currentPage,
       limit: PAGE_SIZE,
       pageSize: PAGE_SIZE,
-    }
-
-    if (currentSearch && currentSearch.trim()) {
-      params.search = currentSearch.trim()
-    }
-
-    if (currentCategory) {
-      params.category = currentCategory
-      if (!isNaN(Number(currentCategory))) {
-        params.category_id = Number(currentCategory)
-      }
-    }
-
-    if (currentDiscount) {
-      params.discount = '1'
-      params.has_discount = true
-    }
-
-    const result = await foodService.getPaginated(params)
-
-    let items = result.items || []
-
-    // Filter tambahan client-side jika backend tidak memfilter semua parameter:
-    if (currentCategory) {
-      const matchCat = (f) =>
-        String(f.category).toLowerCase() === String(currentCategory).toLowerCase() ||
-        String(f.categoryId) === String(currentCategory)
-      // Jika backend belum memfilter kategori
-      if (!items.every(matchCat)) {
-        items = items.filter(matchCat)
-      }
-    }
-    if (currentSearch && currentSearch.trim()) {
-      const q = currentSearch.trim().toLowerCase()
-      if (!items.every(f => f.name?.toLowerCase().includes(q) || f.supplierName?.toLowerCase().includes(q))) {
-        items = items.filter(f =>
-          f.name?.toLowerCase().includes(q) ||
-          f.supplierName?.toLowerCase().includes(q) ||
-          f.description?.toLowerCase().includes(q)
-        )
-      }
-    }
-    if (currentDiscount) {
-      if (!items.every(f => (f.discount || 0) > 0)) {
-        items = items.filter(f => (f.discount || 0) > 0)
-      }
-    }
-
-    foods.value = items
-    total.value = result.total || items.length
-    totalPages.value = Math.max(1, result.totalPages || Math.ceil((result.total || items.length) / PAGE_SIZE))
-    page.value = currentPage
+      category: opts.category ?? activeCategory.value,
+      search: opts.search ?? searchQuery.value,
+      minDiscount: opts.minDiscount ?? minDiscount.value,
+      pickupWithinHours: opts.pickupWithinHours ?? (pickupWithinHours.value || null),
+      locationQuery: opts.locationQuery ?? locationQuery.value,
+    })
+    foods.value = result.items
+    total.value = result.total
+    totalPages.value = result.totalPages
+    page.value = result.page
   } catch (e) {
     console.error('Gagal memuat produk dari backend:', e)
     loadError.value = e.response?.data?.message || e.message || 'Gagal memuat data dari server'
@@ -143,27 +103,37 @@ function syncAndLoad(newPage = 1) {
     query: {
       ...(activeCategory.value ? { category: activeCategory.value } : {}),
       ...(searchQuery.value ? { q: searchQuery.value } : {}),
-      ...(discountOnly.value ? { discount: '1' } : {}),
+      minDiscount: String(minDiscount.value),
+      ...(pickupWithinHours.value ? { pickupWithinHours: pickupWithinHours.value } : {}),
+      ...(locationQuery.value ? { location: locationQuery.value } : {}),
       ...(newPage > 1 ? { page: newPage } : {}),
     }
   })
   loadPage({ page: newPage })
 }
 
-// Category chip click
 function selectCategory(cat) {
   activeCategory.value = cat.id
   syncAndLoad(1)
 }
 
-// Discount toggle
-function toggleDiscount() {
-  discountOnly.value = !discountOnly.value
+function selectPickupDuration(duration) {
+  pickupWithinHours.value = duration
   syncAndLoad(1)
 }
 
-// Debounced search (300ms)
-watch(searchQuery, () => {
+function resetFilters() {
+  clearTimeout(debounceTimer)
+  activeCategory.value = ''
+  minDiscount.value = 1
+  pickupWithinHours.value = ''
+  locationQuery.value = ''
+  searchQuery.value = ''
+  syncAndLoad(1)
+}
+
+// Debounce free-text filters (300ms)
+watch([searchQuery, locationQuery], () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => syncAndLoad(1), 300)
 })
@@ -191,6 +161,14 @@ const pageNumbers = computed(() => {
 const activeCategoryLabel = computed(() =>
   categories.value.find(c => c.id === activeCategory.value)?.name || 'Semua'
 )
+
+const activeFilterCount = computed(() =>
+  Number(Boolean(activeCategory.value)) +
+  Number(minDiscount.value > 1) +
+  Number(Boolean(pickupWithinHours.value)) +
+  Number(Boolean(locationQuery.value.trim())) +
+  Number(Boolean(searchQuery.value.trim()))
+)
 </script>
 
 <template>
@@ -199,158 +177,183 @@ const activeCategoryLabel = computed(() =>
       <!-- Header -->
       <div class="mb-8">
         <h1 class="font-poppins font-bold text-headline text-primary-dark">Jelajahi Makanan Surplus 🍽️</h1>
-        <p class="text-text-secondary mt-1">Temukan surplus makanan segar terdekat dari mitra UMKM kuliner dengan diskon terbaik</p>
+        <p class="text-text-secondary mt-1">Temukan surplus makanan segar dengan diskon terbaik</p>
       </div>
 
-      <!-- Search + Discount filter row -->
-      <div class="mb-5 flex flex-col sm:flex-row gap-3">
-        <div class="relative flex-1 max-w-xl">
-          <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Cari makanan, outlet, atau supplier..."
-            class="form-input-base pl-12 w-full"
-          />
-        </div>
-
-        <!-- Diskon toggle -->
-        <button
-          @click="toggleDiscount"
-          :class="[
-            'flex items-center gap-2 px-4 py-2 rounded-md border text-sm font-medium transition-all whitespace-nowrap cursor-pointer',
-            discountOnly
-              ? 'bg-accent text-white border-accent shadow-sm'
-              : 'bg-surface border-border text-text-secondary hover:border-primary/40 hover:text-primary'
-          ]"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M17 17h.01M7 7l10 10M17 7L7 17"/>
-          </svg>
-          Ada Diskon
-        </button>
-      </div>
-
-      <!-- Category chips — horizontally scrollable -->
-      <div class="mb-6 overflow-x-auto -mx-4 px-4 pb-1" style="scrollbar-width: none; -ms-overflow-style: none;">
-        <div class="flex gap-2 w-max">
-          <button
-            v-for="cat in categories"
-            :key="cat.id"
-            @click="selectCategory(cat)"
-            :class="[
-              'flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-all cursor-pointer',
-              activeCategory === cat.id
-                ? 'bg-primary text-white border-primary shadow-sm'
-                : 'bg-surface border-border text-text-secondary hover:border-primary/40 hover:text-primary'
-            ]"
-          >
-            {{ cat.name }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Results summary -->
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-sm text-text-secondary">
-          <span v-if="isLoading">Memuat katalog makanan dari server...</span>
-          <span v-else>
-            Menampilkan
-            <strong class="text-text-primary">{{ foods.length }}</strong>
-            dari
-            <strong class="text-text-primary">{{ total.toLocaleString('id-ID') }}</strong>
-            makanan
-            <span v-if="activeCategory">&nbsp;di "<strong class="text-primary">{{ activeCategoryLabel }}</strong>"</span>
-            <span v-if="discountOnly"> · <span class="text-accent font-medium">ada diskon</span></span>
-          </span>
-        </p>
-        <span v-if="!isLoading && totalPages > 1" class="text-xs text-text-secondary">
-          Hal. {{ page }} / {{ totalPages }}
-        </span>
-      </div>
-
-      <!-- Loading skeleton -->
-      <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div v-for="i in 8" :key="i" class="bg-surface rounded-md border border-border animate-pulse overflow-hidden">
-          <div class="h-44 bg-border/30 rounded-t-md"></div>
-          <div class="p-4 space-y-3">
-            <div class="h-4 bg-border/30 rounded w-20"></div>
-            <div class="h-5 bg-border/30 rounded w-full"></div>
-            <div class="h-3 bg-border/30 rounded w-32"></div>
-            <div class="h-6 bg-border/30 rounded w-24"></div>
+      <div class="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6 lg:gap-8 items-start">
+        <aside class="bg-surface rounded-lg border border-border shadow-card p-5 lg:sticky lg:top-24">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="font-poppins font-semibold text-base">Filter makanan</h2>
+            <button
+              v-if="activeFilterCount"
+              type="button"
+              class="text-xs font-medium text-primary hover:underline"
+              @click="resetFilters"
+            >
+              Reset
+            </button>
           </div>
-        </div>
+
+          <label for="food-search" class="block text-xs font-semibold text-text-primary mb-2">Cari makanan</label>
+          <div class="relative mb-6">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input id="food-search" v-model="searchQuery" type="search" placeholder="Nama makanan atau outlet" class="form-input-base h-10 pl-9 text-sm" />
+          </div>
+
+          <section class="border-t border-border pt-5 mb-5">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-semibold">Diskon minimal</h3>
+              <span class="text-sm font-bold text-accent">{{ minDiscount }}%</span>
+            </div>
+            <input
+              v-model.number="minDiscount"
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              class="w-full accent-primary cursor-pointer"
+              aria-label="Diskon minimal"
+              @change="syncAndLoad(1)"
+            />
+            <div class="flex justify-between text-xs text-text-secondary mt-1">
+              <span>1%</span><span>100%</span>
+            </div>
+          </section>
+
+          <section class="border-t border-border pt-5 mb-5">
+            <h3 class="text-sm font-semibold mb-3">Kategori makanan</h3>
+            <div class="max-h-56 overflow-y-auto space-y-1 pr-1">
+              <button
+                v-for="cat in categories"
+                :key="cat.id || 'all'"
+                type="button"
+                :aria-pressed="activeCategory === cat.id"
+                @click="selectCategory(cat)"
+                :class="[
+                  'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+                  activeCategory === cat.id
+                    ? 'bg-primary-soft text-primary font-semibold'
+                    : 'text-text-secondary hover:bg-background hover:text-text-primary'
+                ]"
+              >
+                {{ cat.name }}
+              </button>
+            </div>
+          </section>
+
+          <section class="border-t border-border pt-5 mb-5">
+            <h3 class="text-sm font-semibold mb-3">Batas waktu pengambilan</h3>
+            <div class="space-y-2">
+              <button
+                v-for="duration in [{ label: 'Semua waktu', value: '' }, { label: 'Dalam 1 jam', value: '1' }, { label: 'Dalam 3 jam', value: '3' }, { label: 'Dalam 7 jam', value: '7' }]"
+                :key="duration.value || 'any-time'"
+                type="button"
+                :aria-pressed="pickupWithinHours === duration.value"
+                @click="selectPickupDuration(duration.value)"
+                class="flex w-full items-center gap-2 text-left text-sm text-text-secondary hover:text-primary"
+              >
+                <span :class="['w-4 h-4 rounded-full border flex items-center justify-center', pickupWithinHours === duration.value ? 'border-primary' : 'border-border']">
+                  <span v-if="pickupWithinHours === duration.value" class="w-2 h-2 rounded-full bg-primary"></span>
+                </span>
+                {{ duration.label }}
+              </button>
+            </div>
+          </section>
+
+          <section class="border-t border-border pt-5">
+            <label for="food-location" class="block text-sm font-semibold mb-2">Daerah / outlet</label>
+            <input
+              id="food-location"
+              v-model="locationQuery"
+              type="search"
+              placeholder="Contoh: Tebet, Jakarta"
+              class="form-input-base h-10 text-sm"
+            />
+            <p class="text-xs text-text-secondary mt-2">Cari berdasarkan nama daerah atau alamat outlet.</p>
+          </section>
+        </aside>
+
+        <section class="min-w-0">
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-sm text-text-secondary" aria-live="polite">
+              <span v-if="isLoading">Memuat katalog...</span>
+              <span v-else>
+                Menampilkan <strong class="text-text-primary">{{ foods.length }}</strong>
+                dari <strong class="text-text-primary">{{ total.toLocaleString('id-ID') }}</strong> makanan
+                <span v-if="activeCategory">&nbsp;di "<strong class="text-primary">{{ activeCategoryLabel }}</strong>"</span>
+              </span>
+            </p>
+            <span v-if="!isLoading && totalPages > 1" class="text-xs text-text-secondary">
+              Hal. {{ page }} / {{ totalPages }}
+            </span>
+          </div>
+
+          <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div v-for="i in 6" :key="i" class="bg-surface rounded-md border border-border animate-pulse">
+              <div class="aspect-[4/3] bg-border/30 rounded-t-md"></div>
+              <div class="p-4 space-y-3">
+                <div class="h-4 bg-border/30 rounded w-20"></div>
+                <div class="h-5 bg-border/30 rounded w-full"></div>
+                <div class="h-3 bg-border/30 rounded w-32"></div>
+                <div class="h-6 bg-border/30 rounded w-24"></div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="loadError" class="text-center py-16 bg-surface rounded-lg border border-border">
+            <p class="text-4xl mb-4">⚠️</p>
+            <p class="text-text-primary font-semibold text-lg">Gagal memuat katalog</p>
+            <p class="text-text-secondary text-sm mt-1">{{ loadError }}</p>
+            <button @click="loadPage()" class="mt-4 px-4 py-2 rounded-md bg-primary text-white text-sm hover:bg-primary-dark transition-colors">
+              Coba Lagi
+            </button>
+          </div>
+
+          <div v-else-if="foods.length === 0" class="text-center py-16 bg-surface rounded-lg border border-border">
+            <p class="text-4xl mb-4">🍃</p>
+            <p class="text-text-primary font-semibold text-lg">Tidak ada makanan ditemukan</p>
+            <p class="text-text-secondary text-sm mt-1">Coba ubah kata kunci atau filter yang dipilih.</p>
+            <button @click="resetFilters" class="mt-4 px-4 py-2 rounded-md bg-primary text-white text-sm hover:bg-primary-dark transition-colors">
+              Reset Filter
+            </button>
+          </div>
+
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            <FoodCard v-for="food in foods" :key="food.id" :food="food" />
+          </div>
+
+          <div v-if="!isLoading && totalPages > 1" class="mt-10 flex items-center justify-center gap-1 flex-wrap">
+            <button
+              @click="goToPage(page - 1)"
+              :disabled="page <= 1"
+              class="px-3 py-2 rounded-md border border-border text-sm font-medium text-text-secondary hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              ‹ Sebelumnya
+            </button>
+
+            <template v-for="(p, idx) in pageNumbers" :key="p">
+              <span v-if="idx > 0 && p - pageNumbers[idx - 1] > 1" class="px-2 py-2 text-text-secondary text-sm">…</span>
+              <button
+                @click="goToPage(p)"
+                :class="[
+                  'w-9 h-9 rounded-md border text-sm font-medium transition-all',
+                  p === page ? 'bg-primary text-white border-primary shadow-sm' : 'border-border text-text-secondary hover:border-primary hover:text-primary'
+                ]"
+              >{{ p }}</button>
+            </template>
+
+            <button
+              @click="goToPage(page + 1)"
+              :disabled="page >= totalPages"
+              class="px-3 py-2 rounded-md border border-border text-sm font-medium text-text-secondary hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              Selanjutnya ›
+            </button>
+          </div>
+        </section>
       </div>
-
-      <!-- Error state -->
-      <div v-else-if="loadError" class="text-center py-16 bg-surface rounded-xl border border-border/60 p-8 max-w-lg mx-auto">
-        <p class="text-4xl mb-4">⚠️</p>
-        <p class="text-text-primary font-semibold text-lg">Gagal memuat produk dari server</p>
-        <p class="text-text-secondary text-sm mt-1 mb-5">{{ loadError }}</p>
-        <button
-          @click="loadPage()"
-          class="px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors cursor-pointer shadow-sm"
-        >
-          Coba Lagi
-        </button>
-      </div>
-
-      <!-- Empty state -->
-      <div v-else-if="foods.length === 0" class="text-center py-16 bg-surface rounded-xl border border-border/60 p-8 max-w-lg mx-auto">
-        <p class="text-4xl mb-4">🍃</p>
-        <p class="text-text-primary font-semibold text-lg">Tidak ada makanan ditemukan</p>
-        <p class="text-text-secondary text-sm mt-1 mb-5">Coba kata kunci atau kategori lain</p>
-        <button
-          v-if="searchQuery || activeCategory || discountOnly"
-          @click="() => { searchQuery = ''; activeCategory = ''; discountOnly = false; syncAndLoad(1) }"
-          class="px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors cursor-pointer shadow-sm"
-        >
-          Reset Filter
-        </button>
-      </div>
-
-      <!-- Food grid -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <FoodCard v-for="food in foods" :key="food.id" :food="food" />
-      </div>
-
-      <!-- Pagination -->
-      <div v-if="!isLoading && totalPages > 1" class="mt-10 flex items-center justify-center gap-1 flex-wrap">
-        <button
-          @click="goToPage(page - 1)"
-          :disabled="page <= 1"
-          class="px-3 py-2 rounded-md border border-border text-sm font-medium text-text-secondary hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
-        >
-          ‹ Sebelumnya
-        </button>
-
-        <template v-for="(p, idx) in pageNumbers" :key="p">
-          <span
-            v-if="idx > 0 && p - pageNumbers[idx - 1] > 1"
-            class="px-2 py-2 text-text-secondary text-sm"
-          >…</span>
-          <button
-            @click="goToPage(p)"
-            :class="[
-              'w-9 h-9 rounded-md border text-sm font-medium transition-all cursor-pointer',
-              p === page
-                ? 'bg-primary text-white border-primary shadow-sm'
-                : 'border-border text-text-secondary hover:border-primary hover:text-primary'
-            ]"
-          >{{ p }}</button>
-        </template>
-
-        <button
-          @click="goToPage(page + 1)"
-          :disabled="page >= totalPages"
-          class="px-3 py-2 rounded-md border border-border text-sm font-medium text-text-secondary hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
-        >
-          Selanjutnya ›
-        </button>
-      </div>
-
     </div>
   </div>
 </template>
